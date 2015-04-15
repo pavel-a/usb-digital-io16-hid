@@ -66,7 +66,8 @@ extern "C" {
 struct usb_io_internal_s {
     struct usb_io_device_info urdi; //public part
     // Private part:
-    USBDEVHANDLE usbh; // handle
+    intptr_t     resv_p; //reserved for user
+    USBDEVHANDLE usbh;   // handle
     int type;
     char idstr[USB_IO16_ID_STR_LEN + 1];
 };
@@ -223,11 +224,12 @@ next:
     return 1;
 }
 
-
+//////////////////////////////////////////////////////////////////////
 // Public functions:
+//////////////////////////////////////////////////////////////////////
 
 /** Initialize the Library
-@returns: This function returns 0 on success and -1 on error.
+  @returns 0 on success or -1 on error.
 */
 int EXPORT_API usb_io_init(void)
 {
@@ -235,12 +237,20 @@ int EXPORT_API usb_io_init(void)
 }
 
 /** Finalize the Library.
-This function frees all of the static data associated with Library.
-It should be called at the end of execution to avoid memory leaks.
-@returns: This function returns 0 on success and -1 on error.
+  This function frees all of the static data associated with Library.
+  It should be called at the end of execution to avoid memory leaks.
+  @returns: This function returns 0 on success and -1 on error.
 */
+
+// Hook for the library unloader
+void internal_usb_io16_uninit(void)
+{
+  /* nothing yet */
+}
+
 int EXPORT_API usb_io_uninit(void)
 {
+    internal_usb_io16_uninit();
     return 0;
 }
 
@@ -350,48 +360,26 @@ next:
     return 1;
 }
 
+#endif //-------------
 
 /** Open device by serial number
-serial_number == NULL is valid and means any one device.
-@return: This function returns a valid handle to the device on success or NULL on failure.
-Example: usb_relay_device_open_with_serial_number("abcde", 5)
+@param  dev_list list returned from usb_io_get_device_list()
+@return This function returns a valid handle to the device on success or NULL on failure.
+Example: usb_io_device_open_with_serial_number(devlist, "abcd")
 */
-intptr_t USBRL_API usb_io_device_open_with_serial_number(const char *serial_number, unsigned len)
+intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
+                                                         const char *serial_number)
 {
-    struct enumctx_s ectx;
-    int ret;
-    struct usbrelay_internal_s *q;
-    memset(&ectx, 0, sizeof(ectx));
-
-    if ( serial_number && len != USB_RELAY_ID_STR_LEN ) {
-        printerr("Specified invalid str id length: %u", len);
-        return (intptr_t)0;
+    struct usb_io_device_info *tmp;
+    if ( !dev_list || !serial_number )
+        return 0;
+    for (tmp = dev_list; tmp; tmp = tmp->next ) {
+        if ( 0 != strcmp(tmp->serial_number, serial_number) )
+            continue;
+        return usb_io_open_device(tmp);
     }
-
-    q = ectx.head = calloc(1, sizeof(*ectx.head));
-    if ( !q )
-        return (intptr_t)0;
-
-    memcpy(q->idstr, serial_number, len);
-
-    ret = usbhidEnumDevices(USB_CFG_VENDOR_ID, USB_CFG_DEVICE_ID,
-        (void*)&ectx,
-        enumOpenfunc);
-    if ( ret != 0 )
-        goto ret_err; // error during enum
-
-    if ( ectx.numdevs == 0 || q->usbh == 0 ) {
-        goto ret_err; // not found
-    }
-
-    q->urdi.next = (void*)q; // mark this element as standalone
-    return (intptr_t)q;
-
-    ret_err:
-    free(q);
-    return (intptr_t)0;
+    return 0;
 }
-#endif //-------------
 
 /** Open a  device
 @return: This function returns a valid handle to the device on success or NULL on failure.

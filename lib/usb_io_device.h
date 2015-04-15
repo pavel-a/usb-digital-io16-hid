@@ -61,61 +61,58 @@ struct usb_io_device_info
 typedef struct usb_io_device_info *pusb_io_device_info_t;
 
 
-/* Init the USB IO Library
-    @return:  0 on success and -1 on error.
+/** Init the USB IO Library
+  @return:  0 on success and -1 on error.
  */
 int USBRL_API usb_io_init(void);
 
-/* Finalize the USB IO Library.
-    This function frees all of the static data associated with
-    USB IO Library. It should be called at the end of execution to avoid memory leaks.
-    @return:This function returns 0 on success and -1 on error.
+/** Finalize the USB IO Library.
+  This function frees all of the static data associated with
+  USB IO Library. It should be called at the end of execution to avoid memory leaks.
+  @return:This function returns 0 on success and -1 on error.
  */
 int USBRL_API usb_io_uninit(void);
 
 
-/* Enumerate the USB IO Devices.
-    @return:  pointer to a linked list of struct usb_io_device_info for all usb io devices
-    attached to the system, or NULL in the case of failure.
-    Free this linked list by calling free_usb_io_device_list().
-    */
+/** Enumerate the USB IO Devices.
+  @return:  pointer to a linked list of struct usb_io_device_info for all usb io devices
+  attached to the system, or NULL in the case of failure.
+  Free this linked list by calling free_usb_io_device_list().
+ */
 pusb_io_device_info_t USBRL_API usb_io_get_device_list(void);
 
-/*  This function frees a linked list created by get_usb_io_device_list() */
+/** Free a linked list created by get_usb_io_device_list() 
+ */
 void USBRL_API usb_io_free_device_list(struct usb_io_device_info*);
 
-/* Open a usb I/O device
-    @return: handle to the device on success or 0 on failure.
+/** Open a usb I/O device
+  @return: handle to the device on success or 0 on failure.
  */
 intptr_t USBRL_API usb_io_open_device(struct usb_io_device_info *device_info);
 
-/* Close the USB device opened by open_usb_io_device() */
+/** Close the USB device opened by open_usb_io_device()
+ */
 void USBRL_API usb_io_close_device(intptr_t hHandle);
 
 /* Set the green indicator  LED on or off
-    @param  hHandle:  the device handle returned by usb_io_open_device
-    @param  led_mode:    open or close
-    @return:  0 on success and others on error.
-    @note: when ON, the green LED will flash
-    */
+  @param  hHandle:  the device handle returned by usb_io_open_device
+  @param  led_mode:    open or close
+  @return:  0 on success and others on error.
+  @note: when ON, the green LED will flash
+  */
 int USBRL_API usb_io_set_work_led_mode(intptr_t hHandle, enum work_led_mode led_mode);
 
-/*   set the mode of I/O pin
-    @param  hHandle:  the device handle returned by usb_io_open_device
-        pinIndex:   pin number (0 to 15)
-        mode:       input mode or output mode
-        innerPullUp: this param will be used when the pinIndex was set INPUT_MODE.
-
-    @note When set param mode to INPUT_MODE and set innerPullUp to INNER_PULL_UP,
-        the value (read out use read_usb_io_input_pin_value() ) of pinIndex pin  equal 1 if no input on pinIndex pin.
-        We advice you to set the param innerPullUp to INNER_PULL_UP when param mode is INPUT_MODE.
+/** Set the mode of I/O pin
+  @param  hHandle:  the device handle returned by usb_io_open_device
+      pinIndex:   pin number (0 to 15)
+      mode:       input mode or output mode
+      innerPullUp: pull-up on/off, when mode = INPUT_MODE.
 
     @returns: 0 on success, others on failure.
     */
 int USBRL_API usb_io_set_pin_mode(intptr_t hHandle, unsigned pinIndex, enum pin_mode mode, enum input_pin_mode innerPullUp);
 
-/*
-   Set the value of output pin
+/** Set the value of output pin
     @param  hHandle:  the device handle returned by usb_io_open_device
         pinIndex:   pin number  (0 to 15)
         level:      low or high level
@@ -138,6 +135,29 @@ int USBRL_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, u
     @returns:  0 on success, other on failure
     */
 int USBRL_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[16]);
+
+/* --------------- Added pa01 --------------------------- */
+
+/** Open a device by serial number (string)
+    @param  dev_list list returned from usb_io_get_device_list()
+    @return a handle to the device on success or NULL on failure
+    Example: usb_io_device_open_with_serial_number(devlist, "abcd")
+*/
+intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
+                                                         const char *serial_number);
+
+/** Return next dev. info struct pointer in the list returned by usb_relay_device_enumerate() 
+*/
+intptr_t USBRL_API usb_io_device_next_dev(intptr_t ptr_device_info);
+
+/** Get the ID string of the device.
+ @return pointer to const C string (1-byte, 0-terminated)
+*/
+intptr_t USBRL_API usb_io_device_get_id_string(intptr_t ptr_device_info);
+
+/** Get library version
+ */
+int USBRL_API usb_io16_lib_version(void);
 
 #ifdef __cplusplus
 }
