@@ -16,4 +16,8 @@ usb_io_set_work_led_mode
 usb_io_get_all_pin_info
 usb_io_free_device_list
 
+;+
+usb_io_device_next_dev
+usb_io_device_get_id_string
+
 ; END
