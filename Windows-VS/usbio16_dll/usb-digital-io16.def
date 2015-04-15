@@ -1,0 +1,19 @@
+LIBRARY usb_io_interface
+VERSION 1.99
+
+EXPORTS
+; All exports are CDECL for compatibility with the orig. DLL
+
+usb_io_init
+usb_io_uninit
+usb_io_get_device_list
+usb_io_open_device
+usb_io_close_device
+usb_io_set_pin_mode
+usb_io_read_input_pin_value
+usb_io_write_output_pin_value
+usb_io_set_work_led_mode
+usb_io_get_all_pin_info
+usb_io_free_device_list
+
+; END

@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual C++ Express 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usb_io_cmd_test", "usb_io_cmd_test\usb_io_cmd_test(2008).vcproj", "{DC4FE1DB-6C81-48A1-8573-77B7BF938AF7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858} = {C6F03CBB-E5C3-4596-AE67-A8732A860858}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usbio16_dll", "usbio16_dll\usbio16_dll(vs2008).vcproj", "{C6F03CBB-E5C3-4596-AE67-A8732A860858}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DC4FE1DB-6C81-48A1-8573-77B7BF938AF7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DC4FE1DB-6C81-48A1-8573-77B7BF938AF7}.Debug|Win32.Build.0 = Debug|Win32
+		{DC4FE1DB-6C81-48A1-8573-77B7BF938AF7}.Release|Win32.ActiveCfg = Release|Win32
+		{DC4FE1DB-6C81-48A1-8573-77B7BF938AF7}.Release|Win32.Build.0 = Release|Win32
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Debug|Win32.Build.0 = Debug|Win32
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Release|Win32.ActiveCfg = Release|Win32
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

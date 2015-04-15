@@ -177,7 +177,7 @@ static
         }
     }
 
-    dbgprintf("Device %s found: ID=[%*s]\n", productName, USB_IO16_ID_STR_LEN, &buffer[1]);
+    dbgprintf("Device %s found: ID=[%.*s]\n", productName, USB_IO16_ID_STR_LEN, &buffer[1]);
 
     // allocate & save info
     q = (struct usb_io_internal_s *)calloc(1, sizeof(struct usb_io_internal_s));
