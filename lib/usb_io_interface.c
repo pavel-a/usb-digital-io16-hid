@@ -1,19 +1,17 @@
-/** $$$$$$$$$$$$$$$
-* USB HID I/O API library
+/** $$$$$$$$$ WIP $$$$$$
+* USB HID I/O DEVICE API library
 * http://git.io/hx9J
 *
-* This is reconstruction of the original Windows DLL,
-* as supplied by the resellers
+* This is reconstruction of the original Windows DLL, as provided by the vendor.
 * It is binary compatible and works with their example programs.
 * The original .h file has been slightly hacked up.
 *
-* 25-mar-2015 pa01 Win32 version
+* 14-apr-2015 pa01 Windows version
 */
 
 #define MY_VERSION 0x02
 
 #if defined (WIN32) || defined (_WIN32)
-
 // Windows 32 or 64 bit
 #include "targetver.h"
 #define WIN32_EXTRALEAN
@@ -23,9 +21,10 @@
 /* The original DLL has cdecl calling convention */
 #define USBRL_CALL __cdecl
 #define USBRL_API __declspec(dllexport) USBRL_CALL
-
-#define snprintf   _snprintf
 #endif // _MSC_VER
+
+#else  //WIN32
+#define USBRL_API /**/
 #endif //WIN32
 
 #include "usb_io_device.h"
@@ -34,10 +33,11 @@
 #error "Oops. Wrong version of usb_io_device.h"
 #endif
 
-//$$$$$$$$$$
-typedef struct usb_io_device_info * pusb_relay_device_info_t;
-#define USBRL_API EXPORT_API 
-//$$$$$$$$$$$$
+#define EXPORT_API USBRL_API
+
+#if _MSC_VER < 1900 /* before VS2015 */
+#define snprintf   _snprintf
+#endif /* VS2015 */
 
 #include "usb_io_hw.h"
 #include "hiddata.h"
@@ -45,34 +45,42 @@ typedef struct usb_io_device_info * pusb_relay_device_info_t;
 #include <string.h>
 #include <stdlib.h>
 
+#if 1
 //#define dbgprintf(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
-//#define dbgprintf(fmt, ...) printf(fmt, __VA_ARGS__)
-#define dbgprintf(fmt, ...) __noop(fmt, __VA_ARGS__)
+#define dbgprintf(fmt, ...) printf(fmt, __VA_ARGS__)
+//#define dbgprintf(fmt, ...) __noop(fmt, __VA_ARGS__)
 //#define printerr(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
-//#define printerr(fmt, ...) printf(fmt, __VA_ARGS__)
-#define printerr(fmt, ...) __noop(fmt, __VA_ARGS__)
+#define printerr(fmt, ...) printf(fmt, __VA_ARGS__)
+//#define printerr(fmt, ...) __noop(fmt, __VA_ARGS__)
+#else
+#define dbgprintf(fmt, ...) do;while(0)
+#define printerr(fmt, ...) do;while(0)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct usbrelay_internal_s {
-    struct usb_relay_device_info urdi; //public part
+//typedef struct usb_io_device_info * pusb_io_device_info_t;
+
+struct usb_io_internal_s {
+    struct usb_io_device_info urdi; //public part
     // Private part:
     USBDEVHANDLE usbh; // handle
-    char idstr[8];
+    int type;
+    char idstr[USB_IO16_ID_STR_LEN + 1];
 };
 
 // struct for enum context
 struct enumctx_s {
-    struct usbrelay_internal_s *head, *tail;
+    struct usb_io_internal_s *head, *tail;
     int numdevs;
     int status;
 };
 
 // Globals
 
-const char *g_dummyPath = "NOTHING"; // passing dev.path to client not implemented, I return this as path.
+const char *g_dummyPath = "NOTHING"; // passing the dev.path to client not implemented, we return this as path.
 
 static const char *usbErrorMessage(int errCode)
 {
@@ -108,9 +116,9 @@ static int rel_read_status_raw(USBDEVHANDLE dev, void *raw_data)
         return -2;
     }
 
-    if (raw_data) {
+    if ( raw_data ) {
         /* copy raw report data */
-        memcpy( raw_data, buffer, len );
+        memcpy(raw_data, buffer, len);
     }
 
     return (unsigned char)buffer[8]; /* byte of relay states */
@@ -119,150 +127,158 @@ static int rel_read_status_raw(USBDEVHANDLE dev, void *raw_data)
 
 // Enum function for building list of devices
 static
-int enumfunc(USBDEVHANDLE usbh, void *context)
+    int enumfunc(USBDEVHANDLE usbh, void *context)
 {
-//    static const char vendorName[] = USB_RELAY_VENDOR_NAME;
+    static const char vendorName[] = USB_IO16_VENDOR_NAME;
     static const char productName[] = USB_IO16_NAME;
     int err;
-    char buffer[128*sizeof(short)]; // max USB string is 128 UTF-16 chars
+    char buffer[128 * sizeof(short)]; // max USB string is 128 UTF-16 chars
     int i;
-    struct usbrelay_internal_s *q;
+    struct usb_io_internal_s *q;
     struct enumctx_s *ectx = (struct enumctx_s *)context;
 
-    //NOTE: Ignore vendor string. This is against ObjDev rules, restore the check if needed! $$$ TODO
+    err = usbhidGetVendorString(usbh, buffer, sizeof(buffer));
+    if ( err )
+    {
+        goto next;
+    }
+
+    if ( 0 != strcmp(buffer, vendorName) )
+    {
+        goto next;
+    }
 
     err = usbhidGetProductString(usbh, buffer, sizeof(buffer));
-    if (err)
+    if ( err )
     {
         goto next;
     }
 
-    if ( 0 != strcmp( buffer, productName) )
+    if ( 0 != strcmp(buffer, productName) )
     {
         goto next;
     }
 
-     /* Check the unique ID: USB_IO16_ID_STR_LEN  bytes at offset 1 (just after the report id) */
+    /* Check the unique ID: USB_IO16_ID_STR_LEN  bytes at offset 1 (just after the report id) */
     err = rel_read_status_raw(usbh, buffer);
-    if( err < 0 )
+    if ( err < 0 )
     {
         dbgprintf("Error reading report 0: %s\n", usbErrorMessage(err));
         goto next;
     }
 
-    for (i = 1; i <= USB_IO16_ID_STR_LEN; i++)
+    for ( i = 1; i <= USB_IO16_ID_STR_LEN; i++ )
     {
         unsigned char x = (unsigned char)buffer[i];
-        if (x <= 0x20 || x >= 0x7F)
+        if ( x <= 0x20 || x >= 0x7F )
         {
             dbgprintf("Bad USBIO16 ID string!\n");
             goto next;
         }
     }
 
-    if( buffer[USB_IO16_ID_STR_LEN + 1] != 0 )
-    {
-        dbgprintf("Bad USBIO16 ID string!\n");
-        goto next;
-    }
-
-    dbgprintf("Device %s%d found: ID=[%5s]\n", productName, num, &buffer[1]);
+    dbgprintf("Device %s found: ID=[%*s]\n", productName, USB_IO16_ID_STR_LEN, &buffer[1]);
 
     // allocate & save info
-    q = (struct usbrelay_internal_s *)calloc(1, sizeof(struct usbrelay_internal_s));
-    if (!q) {
+    q = (struct usb_io_internal_s *)calloc(1, sizeof(struct usb_io_internal_s));
+    if ( !q ) {
         dbgprintf("Malloc err\n");
         goto next; //$$$ revise
     }
     /* keep this device, continue */
     q->usbh = usbh;
-    memcpy(q->idstr, &buffer[1], USB_RELAY_ID_STR_LEN);
-    q->urdi.type = 16; //  $$$ # pins
+    memcpy(q->idstr, &buffer[1], USB_IO16_ID_STR_LEN);
+    q->type = 16; //  $$$ # pins
     q->urdi.serial_number = &q->idstr[0];
     q->urdi.device_path = (char*)g_dummyPath;
 
-    if (!ectx->head) {
+    if ( !ectx->head ) {
         ectx->head = q;
-        ectx->tail =q;
+        ectx->tail = q;
     } else {
-        ectx->tail->urdi.next = (pusb_relay_device_info_t)q;
+        ectx->tail->urdi.next = (pusb_io_device_info_t)q;
     }
 
     ++ectx->numdevs;
     return 1;
 
-    next:
+next:
     /* Continue search */
     usbhidCloseDevice(usbh);
     return 1;
 }
 
+#if 0
 // Enum function for open one device by ID
 static
-int enumOpenfunc(USBDEVHANDLE usbh, void *context)
+    int enumOpenfunc(USBDEVHANDLE usbh, void *context)
 {
-//    static const char vendorName[] = USB_RELAY_VENDOR_NAME;
+    static const char vendorName[]  = USB_IO16_VENDOR_NAME;
     static const char productName[] = USB_IO16_NAME;
     int err;
-    char buffer[128*sizeof(short)]; // max USB string is 128 UTF-16 chars
+    char buffer[128 * sizeof(short)]; // max USB string is 128 UTF-16 chars
     int i;
     struct enumctx_s *ectx = (struct enumctx_s *)context;
-    struct usbrelay_internal_s *q = ectx->head;
+    struct usb_io_internal_s *q = ectx->head;
 
-    //NOTE: Ignore vendor string. This is against ObjDev rules, restore the check if needed!
+
+    err = usbhidGetVendorString(usbh, buffer, sizeof(buffer));
+    if ( err )
+    {
+        goto next;
+    }
+
+    if ( 0 != strcmp(buffer, vendorName) )
+    {
+        goto next;
+    }
 
     err = usbhidGetProductString(usbh, buffer, sizeof(buffer));
-    if (err)
+    if ( err )
     {
         goto next;
     }
 
-    if ( 0 != strcmp( buffer, productName) )
+    if ( 0 != strcmp(buffer, productName) )
     {
         goto next;
     }
 
-     /* Check the unique ID: USB_IO16_ID_STR_LEN bytes at offset 1 (just after the report id) */
+    /* Check the unique ID: USB_IO16_ID_STR_LEN bytes at offset 1 (just after the report id) */
     err = rel_read_status_raw(usbh, buffer);
-    if( err < 0 )
+    if ( err < 0 )
     {
         dbgprintf("Error reading report 0: %s\n", usbErrorMessage(err));
         goto next;
     }
 
-    for (i = 1; i <= USB_IO16_ID_STR_LEN; i++)
+    for ( i = 1; i <= USB_IO16_ID_STR_LEN; i++ )
     {
         unsigned char x = (unsigned char)buffer[i];
-        if (x <= 0x20 || x >= 0x7F)
+        if ( x <= 0x20 || x >= 0x7F )
         {
             dbgprintf("Bad USBIO16 ID string!\n");
             goto next;
         }
     }
 
-    if( buffer[USB_IO16_ID_STR_LEN + 1] != 0 )
-    {
-        dbgprintf("Bad USBIO16 ID string!\n");
-        goto next;
-    }
+    dbgprintf("Device %s found: ID=[%*s]\n", USB_IO16_ID_STR_LEN, productName, &buffer[1]);
 
-    dbgprintf("Device %s%d found: ID=[%5s]\n", productName, num, &buffer[1]);
-
-    if ( 0 == memcmp( q->idstr, &buffer[1], USB_IO16_ID_STR_LEN) ) {
+    if ( 0 == memcmp(q->idstr, &buffer[1], USB_IO16_ID_STR_LEN) ) {
         q->usbh = usbh;
-        q->urdi.type = 16;  // *** # of pins 
+        q->type = 16;  // *** # of pins
         q->urdi.serial_number = &q->idstr[0];
         q->urdi.device_path = (char*)g_dummyPath;
         ++ectx->numdevs;
         return 0;
     }
 
-    next:
+next:
     /* Continue search */
     usbhidCloseDevice(usbh);
     return 1;
 }
-
+#endif
 
 // Public functions:
 
@@ -286,27 +302,27 @@ int EXPORT_API usb_io_uninit(void)
 
 
 /** Enumerate the USB Relay Devices.*/
-pusb_relay_device_info_t EXPORT_API usb_io_get_device_list(void)
+pusb_io_device_info_t EXPORT_API usb_io_get_device_list(void)
 {
     struct enumctx_s ectx;
     int ret;
     memset(&ectx, 0, sizeof(ectx));
     ret = usbhidEnumDevices(USB_CFG_VENDOR_ID, USB_CFG_DEVICE_ID,
-                      (void*)&ectx,
-                      enumfunc);
+        (void*)&ectx,
+        enumfunc);
 
-    return (pusb_relay_device_info_t)ectx.head;
+    return (pusb_io_device_info_t)ectx.head;
 }
 
 
 /** Free an enumeration Linked List*/
 void USBRL_API usb_io_free_device_list(struct usb_io_device_info *dilist)
 {
-    struct usbrelay_internal_s *p = (struct usbrelay_internal_s *)dilist;
+    struct usb_io_internal_s *p = (struct usb_io_internal_s *)dilist;
 
-    while (p) {
-        struct usbrelay_internal_s *q = (struct usbrelay_internal_s *)((pusb_relay_device_info_t)p)->next;
-        if (p->usbh && ((USBDEVHANDLE)(-1)) != p->usbh) {
+    while ( p ) {
+        struct usb_io_internal_s *q = (struct usb_io_internal_s *)((pusb_io_device_info_t)p)->next;
+        if ( p->usbh && ((USBDEVHANDLE)(-1)) != p->usbh ) {
             usbhidCloseDevice(p->usbh);
             p->usbh = 0;
         }
@@ -318,110 +334,110 @@ void USBRL_API usb_io_free_device_list(struct usb_io_device_info *dilist)
 }
 
 
-#if 0
-/** Open device by serial number
-serial_number == NULL is valid and means any one device.
-@return: This function returns a valid handle to the device on success or NULL on failure.
-Example: usb_relay_device_open_with_serial_number("abcde", 5)  */
-intptr_t USBRL_API usb_relay_device_open_with_serial_number(const char *serial_number, unsigned len)
-{
-    struct enumctx_s ectx;
-    int ret;
-    struct usbrelay_internal_s *q;
-    memset(&ectx, 0, sizeof(ectx));
+#if 0 // not in orig API - do we want it?
+    /** Open device by serial number
+    serial_number == NULL is valid and means any one device.
+    @return: This function returns a valid handle to the device on success or NULL on failure.
+    Example: usb_relay_device_open_with_serial_number("abcde", 5)  */
+    intptr_t USBRL_API usb_io_device_open_with_serial_number(const char *serial_number, unsigned len)
+    {
+        struct enumctx_s ectx;
+        int ret;
+        struct usbrelay_internal_s *q;
+        memset(&ectx, 0, sizeof(ectx));
 
-    if (serial_number && len != USB_RELAY_ID_STR_LEN) {
-        printerr("Specified invalid str id length: %u", len);
-        return (intptr_t)0;
-    }
+        if ( serial_number && len != USB_RELAY_ID_STR_LEN ) {
+            printerr("Specified invalid str id length: %u", len);
+            return (intptr_t)0;
+        }
 
-    q = ectx.head = calloc(1, sizeof(*ectx.head));
-    if (!q)
-        return (intptr_t)0;
+        q = ectx.head = calloc(1, sizeof(*ectx.head));
+        if ( !q )
+            return (intptr_t)0;
 
-    memcpy(q->idstr, serial_number, len);
+        memcpy(q->idstr, serial_number, len);
 
-    ret = usbhidEnumDevices(USB_CFG_VENDOR_ID, USB_CFG_DEVICE_ID,
-                      (void*)&ectx,
-                      enumOpenfunc);
-    if (ret != 0)
-        goto ret_err; // error during enum
+        ret = usbhidEnumDevices(USB_CFG_VENDOR_ID, USB_CFG_DEVICE_ID,
+            (void*)&ectx,
+            enumOpenfunc);
+        if ( ret != 0 )
+            goto ret_err; // error during enum
 
-    if (ectx.numdevs == 0 || q->usbh == 0) {
-        goto ret_err; // not found
-    }
+        if ( ectx.numdevs == 0 || q->usbh == 0 ) {
+            goto ret_err; // not found
+        }
 
-    q->urdi.next = (void*)q; // mark this element as standalone
-    return (intptr_t)q;
+        q->urdi.next = (void*)q; // mark this element as standalone
+        return (intptr_t)q;
 
     ret_err:
-    free(q);
-    return (intptr_t)0;
-}
+        free(q);
+        return (intptr_t)0;
+    }
 #endif //-------------
 
-/** Open a  device
-@return: This function returns a valid handle to the device on success or NULL on failure.
-*/
-intptr_t EXPORT_API usb_io_open_device(struct usb_io_device_info *device_info)
-{
-    struct usbrelay_internal_s *p = (struct usbrelay_internal_s *)device_info;
-    if (!device_info)
-        return 0;
-    if ( (uintptr_t)p->usbh == 0 || (uintptr_t)p->usbh == (uintptr_t)-1 )
-        return 0;
-    //$$$ validate more
-    return (uintptr_t)device_info;
-}
+    /** Open a  device
+    @return: This function returns a valid handle to the device on success or NULL on failure.
+    */
+    intptr_t EXPORT_API usb_io_open_device(struct usb_io_device_info *device_info)
+    {
+        struct usb_io_internal_s *p = (struct usb_io_internal_s *)device_info;
+        if ( !device_info )
+            return 0;
+        if ( (uintptr_t)p->usbh == 0 || (uintptr_t)p->usbh == (uintptr_t)-1 )
+            return 0;
+        //$$$ validate more
+        return (uintptr_t)device_info;
+    }
 
-/** Close a USB relay device*/
-void EXPORT_API usb_io_close_device(intptr_t hHandle)
-{
-    struct usbrelay_internal_s *p = (struct usbrelay_internal_s *)hHandle;
-    if ( 0 == hHandle || ((intptr_t)-1) == hHandle )
-      return;
+    /** Close a USB relay device*/
+    void EXPORT_API usb_io_close_device(intptr_t hHandle)
+    {
+        struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+        if ( 0 == hHandle || ((intptr_t)-1) == hHandle )
+            return;
 
-    if ( (void*)(p->urdi.next) == (void*)p ) {
-        // This was made by usb_xxxx_device_open_with_serial_number() so free it now:
-        if ( p->usbh && ((intptr_t)-1) != (intptr_t)(p->usbh)) {
+        if ( (void*)(p->urdi.next) == (void*)p ) {
+            // This was made by usb_xxxx_device_open_with_serial_number() so free it now:
+            if ( p->usbh && ((intptr_t)-1) != (intptr_t)(p->usbh) ) {
                 usbhidCloseDevice(p->usbh);
                 p->usbh = 0;
+            }
+            p->urdi.next = NULL;
+            free((void*)p);
         }
-        p->urdi.next = NULL;
-        free( (void*)p );
+        // Else this can be in the live list, don't do anything.
     }
-    // Else this can be in the list, don't do anything.
-}
 
 
-int EXPORT_API usb_io_set_work_led_mode(intptr_t hHandle, work_led_mode led_mode)
-{
-  return -1;
-}
+    int EXPORT_API usb_io_set_work_led_mode(intptr_t hHandle, enum work_led_mode led_mode)
+    {
+        return -1;
+    }
 
-int EXPORT_API usb_io_set_pin_mode(intptr_t hHandle, 
-                                   unsigned pinIndex, 
-                                   pin_mode mode,
-                                   input_pin_mode innerPullUp)
-{
-  return -1;
-}
+    int EXPORT_API usb_io_set_pin_mode(intptr_t hHandle,
+        unsigned pinIndex,
+        enum pin_mode mode,
+        enum input_pin_mode innerPullUp)
+    {
+        return -1;
+    }
 
-int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned ouputPinIndex, pin_level level)
-{
-  return -1;
-}
+    int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned ouputPinIndex, enum pin_level level)
+    {
+        return -1;
+    }
 
 
-int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, unsigned *level)
-{
-  return -1;
-}
+    int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, unsigned *level)
+    {
+        return -1;
+    }
 
-int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, pin_info info[USB_IO16_MAX_PIN_NUM])
-{
-  return -1;
-}
+    int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[USB_IO16_MAX_PIN_NUM])
+    {
+        return -1;
+    }
 
 
 /************ Added ****************/
@@ -432,7 +448,7 @@ int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, pin_info info[USB_IO16_
 */
 int EXPORT_API usb_io16_lib_version(void)
 {
-	return (int)(MY_VERSION);
+    return (int)(MY_VERSION);
 }
 
 /**
@@ -442,20 +458,20 @@ The ptr_usb_relay_device_info arg is pointer to struct usb_relay_device_info, ca
 */
 
 /* Return next info struct pointer in the list returned by usb_relay_device_enumerate() */
-intptr_t EXPORT_API usb_io_device_next_dev(intptr_t ptr_usb_relay_device_info)
+intptr_t EXPORT_API usb_io_device_next_dev(intptr_t ptr_device_info)
 {
-    if (!ptr_usb_relay_device_info)
+    if ( !ptr_device_info )
         return 0;
-    return (intptr_t)(void*)((pusb_relay_device_info_t)ptr_usb_relay_device_info)->next;
+    return (intptr_t)(void*)((pusb_io_device_info_t)ptr_device_info)->next;
 }
 
 
 /* Get the ID string of the device. Returns pointer to const C string (1-byte, 0-terminated) */
-intptr_t EXPORT_API usb_io_device_get_id_string(intptr_t ptr_usb_relay_device_info)
+intptr_t EXPORT_API usb_io_device_get_id_string(intptr_t ptr_device_info)
 {
-    if (!ptr_usb_relay_device_info)
+    if ( !ptr_device_info )
         return 0;
-    return (intptr_t)(void const *)((pusb_relay_device_info_t)ptr_usb_relay_device_info)->serial_number;
+    return (intptr_t)(void const *)((pusb_io_device_info_t)ptr_device_info)->serial_number;
 }
 
 

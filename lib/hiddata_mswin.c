@@ -1,7 +1,6 @@
 /* hiddata_mswin.c
  * Win32 variant
- * Compiler: VC++ 2008 or newer; Win. SDK v6 or newer
-  */
+ */
 
 /* Inspired by hiddata.c|h by Christian Starkjohann
  * Copyright: (c) 2008 by OBJECTIVE DEVELOPMENT Software GmbH
@@ -31,7 +30,9 @@
 #ifdef _MSC_VER
 #pragma comment(lib, "setupapi")
 #pragma comment(lib, "hid")
+#if _MSC_VER < 1900 /* before VS2015 */
 #define snprintf   _snprintf
+#endif /* VS2015 */
 #else /* GCC, Mingw... */
 #endif /*_MSC_VER*/
 
@@ -100,7 +101,8 @@ int usbhidEnumDevices(int vendor, int product,
     int                                 errorCode = USBHID_ERR_NOTFOUND;
     HANDLE                              handle = INVALID_HANDLE_VALUE;
     HIDD_ATTRIBUTES                     deviceAttributes;
-                
+    BOOL b;
+
     HidD_GetHidGuid(&hidGuid);
     deviceInfoList = SetupDiGetClassDevsW(&hidGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
     if (!deviceInfoList || deviceInfoList == INVALID_HANDLE_VALUE)
@@ -110,27 +112,34 @@ int usbhidEnumDevices(int vendor, int product,
 
     deviceInfo.cbSize = sizeof(deviceInfo);
     for (i=0; ; i++) {
-        if (handle != INVALID_HANDLE_VALUE){
+        if (handle != INVALID_HANDLE_VALUE) {
             CloseHandle(handle);
             handle = INVALID_HANDLE_VALUE;
         }
         if ( !SetupDiEnumDeviceInterfaces(deviceInfoList, 0, &hidGuid, i, &deviceInfo) )
             break;  /* no more entries */
-        /* First do a dummy call to determine the required size */
+        /* First do a dummy call just to determine the actual size required */
+        size = 0;
         SetupDiGetDeviceInterfaceDetailW(deviceInfoList, &deviceInfo, NULL, 0, &size, NULL);
+        if ( size == 0 )
+            continue;
         if (deviceDetails != NULL)
             free(deviceDetails);
         deviceDetails = malloc(size);
-        if (!deviceDetails)
-            return USBHID_ERR_UNKNOWN;
+        if ( !deviceDetails ) {
+            DEBUG_PRINT(("ALLOC ERROR!\n"));
+            continue;
+        }
         deviceDetails->cbSize = sizeof(*deviceDetails);
         /* 2nd call */
-        SetupDiGetDeviceInterfaceDetailW(deviceInfoList, &deviceInfo, deviceDetails, size, &size, NULL);
+        b = SetupDiGetDeviceInterfaceDetailW(deviceInfoList, &deviceInfo, deviceDetails, size, &size, NULL);
+        if ( !b )
+            continue;
         DEBUG_PRINT(("checking HID path \"%s\"\n", deviceDetails->DevicePath));
 
-        handle = CreateFileW(deviceDetails->DevicePath, 
+        handle = CreateFileW(deviceDetails->DevicePath,
             GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, openFlags, NULL);
-        if(handle == INVALID_HANDLE_VALUE){
+        if (handle == INVALID_HANDLE_VALUE){
             DEBUG_PRINT(("open USB device failed: gle=%d\n", (int)GetLastError()));
             /* Opening devices owned by OS or other apps will fail ; just ignore these. */
             continue;
@@ -138,7 +147,7 @@ int usbhidEnumDevices(int vendor, int product,
         deviceAttributes.Size = sizeof(deviceAttributes);
         HidD_GetAttributes(handle, &deviceAttributes);
         DEBUG_PRINT(("device attributes: vid=%d pid=%d ver=%4.4X\n", deviceAttributes.VendorID, deviceAttributes.ProductID, deviceAttributes.VersionNumber));
-        if(deviceAttributes.VendorID != vendor || deviceAttributes.ProductID != product)
+        if (deviceAttributes.VendorID != vendor || deviceAttributes.ProductID != product)
             continue;   /* skip this device */
 
         errorCode = 0;
@@ -147,12 +156,12 @@ int usbhidEnumDevices(int vendor, int product,
             break; /* stop enumeration */
         }
 
-        /* Now the handle is owned by the callback. It may close it before return or later. */
+        /* Now the handle is owned by the callback It may close it before return or later. */
         handle = INVALID_HANDLE_VALUE;
     }
 
     SetupDiDestroyDeviceInfoList(deviceInfoList);
-    if(deviceDetails != NULL)
+    if (deviceDetails != NULL)
         free(deviceDetails);
 
     return errorCode;
@@ -176,7 +185,7 @@ int usbhidSetReport(USBDEVHANDLE usbh, char *buffer, int len)
 int usbhidGetReport(USBDEVHANDLE usbh, int reportNumber, char *buffer, int *len)
 {
     BOOLEAN rval = 0;
-    buffer[0] = reportNumber;
+    buffer[0] = (char)reportNumber;
     rval = HidD_GetFeature((HANDLE)usbh, buffer, *len);
     return rval == 0 ? USBHID_ERR_IO_HID : 0;
 }
@@ -187,12 +196,16 @@ int usbhidStrerror_r( int err, char *buf, int len)
     const char *s;
     switch (err) {
         case USBHID_ERR_ACCESS:      s = "Access to device denied";
+            break;
         case USBHID_ERR_NOTFOUND:    s = "The specified device was not found";
+            break;
         case USBHID_ERR_IO:          s = "Communication error with device";
+            break;
         case USBHID_ERR_IO_HID:      s = "HID I/O error with device";
+            break;
         default:
             s = "";
     }
-  
+
     return snprintf(buf, len, "%s", s);
 }
