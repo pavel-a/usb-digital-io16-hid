@@ -154,10 +154,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="targetver.h" />
+    <ClCompile Include="..\..\usb_io_cmd_test\usb_io_cmd_test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\usb_io_cmd_test\usb_io_cmd_test.cpp" />
+    <ClInclude Include="..\..\lib\targetver.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

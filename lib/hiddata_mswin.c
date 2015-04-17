@@ -10,6 +10,8 @@
 #error
 #endif
 
+#include "targetver.h"
+
 #include "hiddata.h"
 #include <stdio.h>
 #include <string.h>
@@ -21,7 +23,6 @@
 #define DEBUG_PRINT(arg)
 #endif
 
-#include "targetver.h"
 #include <windows.h>
 #include <setupapi.h>
 #include <hidsdi.h>

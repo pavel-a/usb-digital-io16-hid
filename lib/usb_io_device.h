@@ -4,6 +4,8 @@
 #ifndef USB_IO_DEVICE_H__
 #define USB_IO_DEVICE_H__
 
+#define USBIO16_LIB_VER 0x02
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -81,7 +83,7 @@ int USBRL_API usb_io_uninit(void);
  */
 pusb_io_device_info_t USBRL_API usb_io_get_device_list(void);
 
-/** Free a linked list created by get_usb_io_device_list() 
+/** Free a linked list created by get_usb_io_device_list()
  */
 void USBRL_API usb_io_free_device_list(struct usb_io_device_info*);
 
@@ -146,7 +148,7 @@ int USBRL_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[16]
 intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
                                                          const char *serial_number);
 
-/** Return next dev. info struct pointer in the list returned by usb_relay_device_enumerate() 
+/** Return next dev. info struct pointer in the list returned by usb_relay_device_enumerate()
 */
 intptr_t USBRL_API usb_io_device_next_dev(intptr_t ptr_device_info);
 

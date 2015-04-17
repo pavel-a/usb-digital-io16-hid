@@ -29,7 +29,7 @@
 
 #include "usb_io_device.h"
 
-#if defined(USBIO16_LIB_VER) && (USBIO16_LIB_VER != MY_VERSION)
+#if !defined(USBIO16_LIB_VER) || (USBIO16_LIB_VER != MY_VERSION)
 #error "Oops. Wrong version of usb_io_device.h"
 #endif
 
