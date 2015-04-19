@@ -71,13 +71,6 @@ try {
 }
 
 try {
-  $libver = [MYAPP.IOLIB]::usb_io16_lib_version()
-  Write-Host "2usb_io16_lib_version=" $libver
-} catch {
-  Write-Warning "2usb_io16_lib_version() not found (using the original DLL?)"
-}
-
-try {
   if ( 0 -ne $IOLIB::usb_io_init() ) {
      Write-Warning "Error init usb_io lib"
      throw "error init"
