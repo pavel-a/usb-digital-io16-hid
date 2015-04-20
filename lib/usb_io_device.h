@@ -28,20 +28,24 @@ enum pin_mode
 
 enum pin_level
 {
-    LOW_LEVEL = 0,
-    HIGHT_LEVEL = 1
+    LOW_LEVEL   = 0,
+    HIGH_LEVEL  = 1,
+    HIGHT_LEVEL = HIGH_LEVEL, /*compat*/
 };
 
 enum input_pin_mode
 {
-    NO_INNNER_PULL_UP = 0,
-    INNER_PULL_UP = 1
+    NO_INNER_PULL_UP  = 0,
+    INNER_PULL_UP     = 1,
+    NO_INNNER_PULL_UP = NO_INNER_PULL_UP, /*compat*/
 };
 
 enum work_led_mode
 {
-    CLOSE_WORK_LED = 0,
-    OPEN_WORK_LED = 1
+    WORK_LED_OFF   = 0,
+    WORK_LED_BLINK = 1,
+    CLOSE_WORK_LED = WORK_LED_OFF,  /*compat*/
+    OPEN_WORK_LED  = WORK_LED_BLINK, /*compat*/
 };
 
 struct pin_info
@@ -140,26 +144,32 @@ int USBRL_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[16]
 
 /* --------------- Added pa01 --------------------------- */
 
+/** Get the library version
+ */
+int USBRL_API usb_io16_lib_version(void);
+
 /** Open a device by serial number (string)
     @param  dev_list list returned from usb_io_get_device_list()
     @return a handle to the device on success or NULL on failure
     Example: usb_io_device_open_with_serial_number(devlist, "abcd")
 */
-intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
+intptr_t USBRL_API usb_io_device_open_with_serial_number(pusb_io_device_info_t dev_list,
                                                          const char *serial_number);
 
+/* --- Helpers for scripting. 
+All pointers passed & returned as opaque intptr_t values 
+---*/
+
 /** Return next dev. info struct pointer in the list returned by usb_relay_device_enumerate()
+  @note Native C callers: just use usb_io_device_info.next
 */
-intptr_t USBRL_API usb_io_device_next_dev(intptr_t ptr_device_info);
+pusb_io_device_info_t USBRL_API usb_io_device_next_dev(pusb_io_device_info_t ptr_device_info);
 
 /** Get the ID string of the device.
  @return pointer to const C string (1-byte, 0-terminated)
+ @note Native C callers: just use usb_io_device_info.serial_number
 */
-intptr_t USBRL_API usb_io_device_get_id_string(intptr_t ptr_device_info);
-
-/** Get library version
- */
-int USBRL_API usb_io16_lib_version(void);
+intptr_t USBRL_API usb_io_device_get_id_string(pusb_io_device_info_t ptr_device_info);
 
 #ifdef __cplusplus
 }
