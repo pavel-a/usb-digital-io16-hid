@@ -18,8 +18,7 @@ static void delayMs(int ms) { ::Sleep(ms); }
 
 #include <usb_io_device.h>
 
-
-typedef intptr_t devhnd_t;
+typedef intptr_t devhnd_t; // type for dev. handle
 
 ///////////////////////////////////////////////////
 
@@ -48,7 +47,7 @@ int enum_test()
 
 ///////////////////////////////////////////////////
 // Wrapper for calling test on 1st found device
-int one_dev_test( int (*ftest)(devhnd_t dev) )
+int one_dev_test( int (*ftest)(devhnd_t a_dev, intptr_t a_param), intptr_t param )
 {
     int rc = -1;
     usb_io_device_info *usb_io_list = NULL;
@@ -66,7 +65,7 @@ int one_dev_test( int (*ftest)(devhnd_t dev) )
         if (ftest) {
           devhnd_t hnd = usb_io_open_device(usb_io_list);
           try {
-              rc = ftest( hnd );
+              rc = ftest( hnd, param );
           } catch(...) {
               printf("\nException!\n");
           }
@@ -82,23 +81,62 @@ int one_dev_test( int (*ftest)(devhnd_t dev) )
 
 ///////////////////////////////////////////////////
 
-int test_LED_on_off(devhnd_t dev)
+int test_LED_on_off(devhnd_t dev, intptr_t param)
 {
-    if(usb_io_set_work_led_mode(dev, OPEN_WORK_LED) != 0) {
-        printf("open work led failure\n");
+    if ( usb_io_set_work_led_mode(dev, WORK_LED_BLINK) != 0 ) {
+        printf("led on failed\n");
         return 2;
     }
+    
+    int ms = (int)param;
+    if ( ms < 100 ) ms = 100;
+    if ( ms > 10000 ) ms = 10000;
+    delayMs(ms);
 
-    delayMs(2500);
-
-    if(usb_io_set_work_led_mode(dev, CLOSE_WORK_LED) != 0) {
-        printf("close work led failure\n");
+    if ( usb_io_set_work_led_mode(dev, WORK_LED_OFF) != 0 ) {
+        printf("close work led off failed\n");
         return 2;
     }
 
     return 0;
 }
 
+// I/O pin loopback test
+
+int test_IO_loopbk(devhnd_t dev, intptr_t param)
+{
+    unsigned pin_IN = param & 0xF;         // ....000N
+    unsigned pin_OUT = (param >> 4) & 0xF; // ....00N0
+    input_pin_mode ipm = INNER_PULL_UP; // INNER_PULL_UP|NO_INNER_PULL_UP
+    int rc = -1;
+    unsigned inp = -1;
+    int loop_cnt = 3;
+
+    printf("Loopback test: Connect pins OUT[%u] -> IN[%u] [pullup mode=%d]\n", pin_IN, pin_OUT, (int)ipm);
+    rc = usb_io_set_pin_mode(dev, pin_IN, INPUT_MODE, ipm);
+    rc = usb_io_set_pin_mode(dev, pin_OUT, OUTPUT_MODE, NO_INNER_PULL_UP);
+
+    // Read input
+    rc = usb_io_read_input_pin_value(dev, pin_IN, &inp);
+    printf("? IN[%d]=%X\n", pin_IN, inp);
+
+    for (int j = loop_cnt; j > 0; --j) {
+        // Set output low, read
+        rc = usb_io_write_output_pin_value(dev, pin_OUT, LOW_LEVEL);
+        rc = usb_io_read_input_pin_value(dev, pin_IN, &inp);
+        printf("v IN[%d]=%X\n", pin_IN, inp);
+        
+        // Set output high, read
+        delayMs(200);
+        rc = usb_io_write_output_pin_value(dev, pin_OUT, HIGH_LEVEL);
+        delayMs(200);
+        rc = usb_io_read_input_pin_value(dev, pin_IN, &inp);
+        printf("^ IN[%d]=%X\n", pin_IN, inp);
+
+    } //loop
+
+    return 0;
+}
 
 ///////////////////////////////////////////////////
 
@@ -181,7 +219,11 @@ int main(int argc, char* argv[])
 
 //    rc = orig_loop_test();
 //    rc = enum_test();
-      rc = one_dev_test( test_LED_on_off );
+//      rc = one_dev_test( test_LED_on_off, 2500 );
+
+      //Loopback 0 <-> 15:
+      rc = one_dev_test( test_IO_loopbk, (0U) | (10U << 4));
+      
 
     } catch(...) {
         printf("\nException!\n");
