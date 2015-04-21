@@ -28,9 +28,10 @@ enum pin_mode
 
 enum pin_level
 {
-    LOW_LEVEL   = 0,
-    HIGH_LEVEL  = 1,
-    HIGHT_LEVEL = HIGH_LEVEL, /*compat*/
+    LOW_LVL   = 0,
+    HIGH_LVL  = 1,    /* Could not define HIGH_LEVEL - conflicts with Win8 SDK! */
+    LOW_LEVEL = 0,          /*compat*/
+    HIGHT_LEVEL = HIGH_LVL, /*compat*/
 };
 
 enum input_pin_mode
@@ -156,8 +157,8 @@ int USBRL_API usb_io16_lib_version(void);
 intptr_t USBRL_API usb_io_device_open_with_serial_number(pusb_io_device_info_t dev_list,
                                                          const char *serial_number);
 
-/* --- Helpers for scripting. 
-All pointers passed & returned as opaque intptr_t values 
+/* --- Helpers for scripting.
+All pointers passed & returned as opaque intptr_t values
 ---*/
 
 /** Return next dev. info struct pointer in the list returned by usb_relay_device_enumerate()

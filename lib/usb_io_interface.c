@@ -472,20 +472,20 @@ The ptr_usb_relay_device_info arg is pointer to struct usb_relay_device_info, ca
 */
 
 /* Return next info struct pointer in the list returned by usb_relay_device_enumerate() */
-intptr_t EXPORT_API usb_io_device_next_dev(intptr_t ptr_device_info)
+pusb_io_device_info_t EXPORT_API usb_io_device_next_dev(pusb_io_device_info_t ptr_device_info)
 {
     if ( !ptr_device_info )
         return 0;
-    return (intptr_t)(void*)((pusb_io_device_info_t)ptr_device_info)->next;
+    return ptr_device_info->next;
 }
 
 
 /* Get the ID string of the device. Returns pointer to const C string (1-byte, 0-terminated) */
-intptr_t EXPORT_API usb_io_device_get_id_string(intptr_t ptr_device_info)
+intptr_t EXPORT_API usb_io_device_get_id_string(pusb_io_device_info_t ptr_device_info)
 {
     if ( !ptr_device_info )
         return 0;
-    return (intptr_t)(void const *)((pusb_io_device_info_t)ptr_device_info)->serial_number;
+    return (intptr_t)(void const *)(ptr_device_info->serial_number);
 }
 
 #ifdef __cplusplus

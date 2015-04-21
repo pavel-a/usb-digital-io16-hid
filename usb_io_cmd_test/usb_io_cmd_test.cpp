@@ -33,8 +33,8 @@ int enum_test()
         return 1;
     }
 
-    for(usb_io_device_info *tmp = usb_io_list; 
-        tmp; 
+    for(usb_io_device_info *tmp = usb_io_list;
+        tmp;
         tmp = tmp->next ) {
         n++;
         printf("%d: serial number:%s\n", n, tmp->serial_number);
@@ -57,11 +57,11 @@ int one_dev_test( int (*ftest)(devhnd_t a_dev, intptr_t a_param), intptr_t param
         return rc;
     }
 
-    for(struct usb_io_device_info *tmp = usb_io_list; 
-        tmp; 
+    for(struct usb_io_device_info *tmp = usb_io_list;
+        tmp;
         tmp = tmp->next ) {
         printf("Running on device with serial number:%s\n", tmp->serial_number);
-        
+
         if (ftest) {
           devhnd_t hnd = usb_io_open_device(usb_io_list);
           try {
@@ -71,7 +71,7 @@ int one_dev_test( int (*ftest)(devhnd_t a_dev, intptr_t a_param), intptr_t param
           }
           usb_io_close_device(hnd);
         }
-        
+
         break; //only 1st device
     }
 
@@ -87,7 +87,7 @@ int test_LED_on_off(devhnd_t dev, intptr_t param)
         printf("led on failed\n");
         return 2;
     }
-    
+
     int ms = (int)param;
     if ( ms < 100 ) ms = 100;
     if ( ms > 10000 ) ms = 10000;
@@ -122,13 +122,13 @@ int test_IO_loopbk(devhnd_t dev, intptr_t param)
 
     for (int j = loop_cnt; j > 0; --j) {
         // Set output low, read
-        rc = usb_io_write_output_pin_value(dev, pin_OUT, LOW_LEVEL);
+        rc = usb_io_write_output_pin_value(dev, pin_OUT, LOW_LVL);
         rc = usb_io_read_input_pin_value(dev, pin_IN, &inp);
         printf("v IN[%d]=%X\n", pin_IN, inp);
-        
+
         // Set output high, read
         delayMs(200);
-        rc = usb_io_write_output_pin_value(dev, pin_OUT, HIGH_LEVEL);
+        rc = usb_io_write_output_pin_value(dev, pin_OUT, HIGH_LVL);
         delayMs(200);
         rc = usb_io_read_input_pin_value(dev, pin_IN, &inp);
         printf("^ IN[%d]=%X\n", pin_IN, inp);
@@ -174,7 +174,7 @@ int orig_loop_test()
                 for (int i = 0; i < 16; i++)
                 {
                     //set work mode
-                    usb_io_set_pin_mode(hand, i, OUTPUT_MODE, NO_INNNER_PULL_UP);
+                    usb_io_set_pin_mode(hand, i, OUTPUT_MODE, NO_INNER_PULL_UP);
                     //set out high level
                     usb_io_write_output_pin_value(hand, i, HIGHT_LEVEL);
                 }
@@ -221,9 +221,9 @@ int main(int argc, char* argv[])
 //    rc = enum_test();
 //      rc = one_dev_test( test_LED_on_off, 2500 );
 
-      //Loopback 0 <-> 15:
+      //Loopback pins ## 0 <-> 10:
       rc = one_dev_test( test_IO_loopbk, (0U) | (10U << 4));
-      
+
 
     } catch(...) {
         printf("\nException!\n");
