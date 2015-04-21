@@ -8,6 +8,11 @@
 # Enums are passed as Uint32 (unsigned?, always 32 bit)
 # Returned status as Int32 (signed, always 32 bit)
 
+# Detect script host bitness to use the matching DLL variant:
+$host_arch = 0x86
+if ( 8 -eq [IntPtr]::Size ) { $host_arch = 0x64 }
+"Host arch: x{0:X}" -f $host_arch
+
 $Methods_IOLIB = @'
 
 [DllImport("usb_io_interface.dll")]
@@ -81,35 +86,38 @@ try {
 }
 
 $devlist = $IOLIB::usb_io_get_device_list();
-echo $devlist
+#echo $devlist
 
 if ( $devlist.ToString() -eq "0" ) { 
-  # DOESNT WORK: if ( $devlist -eq "0" ) { 
-  Write-Warning "No devices found"
+  # DOESNT WORK: if ( $devlist -eq 0 ) ... just compare as strings!
+  Write-Warning "No devices found, or all devices are opened"
+  # Devices already opened do not even enumerate! how to fix this?
   return 1
-}
-else {
-  Write-Host "Some devices found, list=", $devlist
+} else {
+  Write-Host "One or more device found..."
 
   # Open 1st detected device
   $dev = $IOLIB::usb_io_open_device($devlist)
-  if ($dev -ne 0) {
+  if ($dev.ToString() -ne "0") {
      Write-Host "Blinking LED..."
      $IOLIB::usb_io_set_work_led_mode( $dev, 1 );
-     sleep 3
+     Sleep 3
      $IOLIB::usb_io_set_work_led_mode( $dev, 0 );
      $IOLIB::usb_io_close_device($dev)
      $dev = 0
-  }
+  } else { Write-Warning "Error opening the device!" }
+  
 }
 
-  # Free the dev list:
-  $IOLIB::usb_io_free_device_list($devlist)
-  $devlist = 0
+# Free the dev list:
+$IOLIB::usb_io_free_device_list($devlist)
+$devlist = 0
 
-
-Write-Host "END"
+Write-Host "END test"
 
 return 0
 }
 
+"Now type: TEST" # Run: uncomment next line
+
+#test
