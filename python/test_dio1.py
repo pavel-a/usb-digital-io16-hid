@@ -159,7 +159,7 @@ def testLed() :
   print("Blinking green LED off")
   
   
-# main
+# MAIN
 def main():
   loadLib()
   getLibFunctions()
@@ -175,12 +175,6 @@ def main():
     unloadLib()
   print("end.")
  
-    #    if len(devids) != 0 :
-      # Test any 1st found dev .
-#      print("Testing relay with ID=" + devids[0])
-#      openDevById(g_enumlist, devids[0])
-#      testR2()
-#      closeDev()
   
 print("START 0, name=%s" % (__name__))
 if __name__ == "__main__" :
