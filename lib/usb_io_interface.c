@@ -33,6 +33,10 @@
 #error "Oops. Wrong version of usb_io_device.h"
 #endif
 
+#if (USB_IO16_MAX_PIN_NUM > 16)
+#error revise!
+#endif
+
 #define EXPORT_API USBRL_API
 
 #if _MSC_VER < 1900 /* before VS2015 */
@@ -288,80 +292,6 @@ void USBRL_API usb_io_free_device_list(struct usb_io_device_info *dilist)
 }
 
 
-#if 0 // not in orig API - do we want it?
-
-// Enum function for open one device by ID
-static
-    int enumOpenfunc(USBDEVHANDLE usbh, void *context)
-{
-    static const char vendorName[]  = USB_IO16_VENDOR_NAME;
-    static const char productName[] = USB_IO16_NAME;
-    int err;
-    char buffer[128 * sizeof(short)]; // max USB string is 128 UTF-16 chars
-    int i;
-    struct enumctx_s *ectx = (struct enumctx_s *)context;
-    struct usb_io_internal_s *q = ectx->head;
-
-
-    err = usbhidGetVendorString(usbh, buffer, sizeof(buffer));
-    if ( err )
-    {
-        goto next;
-    }
-
-    if ( 0 != strcmp(buffer, vendorName) )
-    {
-        goto next;
-    }
-
-    err = usbhidGetProductString(usbh, buffer, sizeof(buffer));
-    if ( err )
-    {
-        goto next;
-    }
-
-    if ( 0 != strcmp(buffer, productName) )
-    {
-        goto next;
-    }
-
-    /* Check the unique ID: USB_IO16_ID_STR_LEN bytes at offset 1 (just after the report id) */
-    err = rel_read_status_raw(usbh, buffer);
-    if ( err < 0 )
-    {
-        dbgprintf("Error reading report 0: %s\n", usbErrorMessage(err));
-        goto next;
-    }
-
-    for ( i = 1; i <= USB_IO16_ID_STR_LEN; i++ )
-    {
-        unsigned char x = (unsigned char)buffer[i];
-        if ( x <= 0x20 || x >= 0x7F )
-        {
-            dbgprintf("Bad USBIO16 ID string!\n");
-            goto next;
-        }
-    }
-
-    dbgprintf("Device %s found: ID=[%*s]\n", USB_IO16_ID_STR_LEN, productName, &buffer[1]);
-
-    if ( 0 == memcmp(q->idstr, &buffer[1], USB_IO16_ID_STR_LEN) ) {
-        q->usbh = usbh;
-        q->type = 16;  // *** # of pins
-        q->urdi.serial_number = &q->idstr[0];
-        q->urdi.device_path = (char*)g_dummyPath;
-        ++ectx->numdevs;
-        return 0;
-    }
-
-next:
-    /* Continue search */
-    usbhidCloseDevice(usbh);
-    return 1;
-}
-
-#endif //-------------
-
 /** Open device by serial number
 @param  dev_list list returned from usb_io_get_device_list()
 @return This function returns a valid handle to the device on success or NULL on failure.
@@ -395,23 +325,24 @@ intptr_t EXPORT_API usb_io_open_device(struct usb_io_device_info *device_info)
     return (uintptr_t)device_info;
 }
 
-/** Close a device*/
+/** Close a device
+ TODO REVISE $$$$
+ Currently we keep all detected devices open by default,
+ so other applications cannot access device unless we close it!
+ Once closed, we cannot reopen it because usbhid layer does not save the dev. filename...
+ */
 void EXPORT_API usb_io_close_device(intptr_t hHandle)
 {
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     if ( 0 == hHandle || ((intptr_t)-1) == hHandle )
-        return;
+        return; // bogus ptr, don't touch
 
-    if ( (void*)(p->urdi.next) == (void*)p ) {
-        // This was made by usb_xxxx_device_open_with_serial_number() so free it now:
-        if ( p->usbh && ((intptr_t)-1) != (intptr_t)(p->usbh) ) {
+    // This element is in the live list, don't free it!
+    // Only close the device handle
+    if ( p->usbh && ((intptr_t)-1) != (intptr_t)(p->usbh) ) {
             usbhidCloseDevice(p->usbh);
             p->usbh = 0;
-        }
-        p->urdi.next = NULL;
-        free((void*)p);
     }
-    // Else this can be in the live list, don't do anything.
 }
 
 
@@ -434,23 +365,108 @@ int EXPORT_API usb_io_set_pin_mode(intptr_t hHandle,
     enum pin_mode mode,
     enum input_pin_mode innerPullUp)
 {
-    return -1;
+    unsigned char buf[9];
+    struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+    if (!p)
+        return 1;
+    if (pinIndex >= USB_IO16_MAX_PIN_NUM)
+        return 2;
+
+    memset(buf, 0, sizeof(buf));
+    buf[1] = 0xFF;
+    buf[2] = (unsigned char)pinIndex;
+    buf[3] = (unsigned char)!!mode;
+    buf[4] = (unsigned char)!!innerPullUp;
+
+    return d16_write_rep(p->usbh, 0, buf);
 }
 
-int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned ouputPinIndex, enum pin_level level)
+int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned pinIndex, enum pin_level level)
 {
-    return -1;
+    unsigned char buf[9];
+    struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+    if (!p)
+        return 1;
+    if (pinIndex >= USB_IO16_MAX_PIN_NUM)
+        return 2;
+
+    memset(buf, 0, sizeof(buf));
+    buf[1] = 0xFD;
+    buf[2] = (unsigned char)pinIndex;
+    buf[3] = (unsigned char)!!level;
+
+    return d16_write_rep(p->usbh, 0, buf);
 }
 
 
 int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, unsigned *level)
 {
-    return -1;
+    unsigned char buf[9];
+    struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+    unsigned val;
+    if (!p)
+        return -1;
+    if (pinIndex >= USB_IO16_MAX_PIN_NUM)
+        return -2;
+    
+    if (!level)
+        return -1; //TODO REVISE: if nullptr, return status in the ret value $$$
+
+    memset(buf, 0, sizeof(buf));
+    if ( 0 != d16_read_rep(p->usbh, 0, buf) ) {
+        return -3;
+    }
+    
+    // Pin state: buf[8] pins 0-7 buf[7] pins 8-15
+    if ( pinIndex < 8 ) {
+        val = (buf[8] >> pinIndex) & 1;
+    } else {
+        val = (buf[7] >> (pinIndex - 8)) & 1;
+    }
+
+    *level = val;
+    return 0;
 }
+
 
 int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[USB_IO16_MAX_PIN_NUM])
 {
-    return -1;
+    unsigned char buf[9];
+    struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+    unsigned val;
+    int k;
+
+    if (!info)
+        return -1;
+
+    memset(buf, 0, sizeof(buf));
+    if ( 0 != d16_read_rep(p->usbh, 0, buf) ) {
+        return -3;
+    }
+
+#if (USB_IO16_MAX_PIN_NUM > 16) || (USB_IO16_MAX_PIN_NUM < 9)
+#error revise!
+#endif
+
+    // Pin state: buf[8] pins 0-7 buf[7] pins 8-15
+    // Pin i/o mode: buf[6] pins 0-7, buf [5] pins 8-15
+    for (k = 0; k < 8; k++) {
+        info[k].pinIndex = k;
+        val = (buf[8] >> k) & 1;
+        info[k].pinValue = val;
+        val = (buf[6] >> k) & 1;
+        info[k].pinMode = val ? INPUT_MODE : OUTPUT_MODE;
+    }
+
+    for (k = 8; k < USB_IO16_MAX_PIN_NUM; k++) {
+        info[k].pinIndex = k;
+        val = (buf[7] >> (k-8)) & 1;
+        info[k].pinValue = val;
+        val = (buf[6] >> (k-8)) & 1;
+        info[k].pinMode = val ? INPUT_MODE : OUTPUT_MODE;
+    }
+
+    return 0;
 }
 
 
