@@ -33,3 +33,5 @@
 *.suo
 *.ncb
 *.sdf
+
+_rel/

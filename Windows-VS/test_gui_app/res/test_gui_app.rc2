@@ -1,0 +1,9 @@
+//
+// test_gui_app.RC2
+//
+
+#ifdef APSTUDIO_INVOKED
+#error ­
+#endif //APSTUDIO_INVOKED
+
+
