@@ -326,10 +326,7 @@ intptr_t EXPORT_API usb_io_open_device(struct usb_io_device_info *device_info)
 }
 
 /** Close a device
- TODO REVISE $$$$
- Currently we keep all detected devices open by default,
- so other applications cannot access device unless we close it!
- Once closed, we cannot reopen it because usbhid layer does not save the dev. filename...
+ Currently we just keep all detected devices open. This seems to work.
  */
 void EXPORT_API usb_io_close_device(intptr_t hHandle)
 {
@@ -338,11 +335,6 @@ void EXPORT_API usb_io_close_device(intptr_t hHandle)
         return; // bogus ptr, don't touch
 
     // This element is in the live list, don't free it!
-    // Only close the device handle
-    if ( p->usbh && ((intptr_t)-1) != (intptr_t)(p->usbh) ) {
-            usbhidCloseDevice(p->usbh);
-            p->usbh = 0;
-    }
 }
 
 
@@ -408,7 +400,7 @@ int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, 
         return -1;
     if (pinIndex >= USB_IO16_MAX_PIN_NUM)
         return -2;
-    
+
     if (!level)
         return -1; //TODO REVISE: if nullptr, return status in the ret value $$$
 
@@ -416,7 +408,7 @@ int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, 
     if ( 0 != d16_read_rep(p->usbh, 0, buf) ) {
         return -3;
     }
-    
+
     // Pin state: buf[8] pins 0-7 buf[7] pins 8-15
     if ( pinIndex < 8 ) {
         val = (buf[8] >> pinIndex) & 1;
