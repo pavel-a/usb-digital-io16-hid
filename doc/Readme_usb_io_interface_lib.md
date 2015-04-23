@@ -6,10 +6,10 @@ Version 2.0
 Changes to the original DLL:
 ----------------------------
 
-* The type used for handles changed from int to intptr_t, for 64-bit compatibility. This should be binary compatible with existing 32-bit clients.
-* Enumeration names changed (also fixed typos; original names are kept for compatibility).
+* The type used for handles changed from `int` to `intptr_t`, for 64-bit compatibility. 
+  This should be binary compatible with 32-bit programs written with the original library.
+* Enumeration names changed (to fix typos; original names are kept for compatibility).
 * Added helper functions for use from managed languages and scripts; see below.
-* By default the library opens all detected devices. TO DO: revise. 
 
 
 C/C++ applications
@@ -42,10 +42,22 @@ Functions
 * `usb_io_set_pin_mode` - configure one I/O pin as input or output
 * `usb_io_write_output_pin_value` - set state of an output oin
 * `usb_io_close_device` - closes the device handle opened by `usb_io_open_device`
-* `usb_io_set_work_led_mode` - turn the LED on or off
+* `usb_io_set_work_led_mode` - turns the green "work" LED on or off
 * `usb_io_uninit` -  Finalizes the library
 
-TO DO: docum. for additional functions ...
+
+### Added functions
+
+Following functions (except of usb_io16_lib_version) are intended for scripting languages to help (or avoid) handling of native C pointers.
+Native C/C++ does not need to use these.
+
+*  `usb_io16_lib_version` - returns the library version (useful for diagnostic)
+*  `usb_io_device_open_with_serial_number` - opens a device by its unique "serial number"
+*  `usb_io_device_next_dev` - retrieves pointer to the next element in list of devices, as opaque value.
+  This value can be passed to other functions that receive pointer to device struct.
+*  `usb_io_device_get_id_string` - retrieves pointer to the "serial number" string, as opaque value.
+  The caller should retrieve the string as one-byte (ASCII, zero terminated) string.
+*  .... need more ...
 
 Structures
 -----------
@@ -89,10 +101,6 @@ If error occurred, the API functions that return error code return non-0 value; 
 * The list of devices is needed to call `usb_io_open_device`. Do not free it before closing all active devices (boards).
 * The host must poll to detect change of inputs. The device does not generate any events or interrupts.
 * The library does not support detection of hot plug/unplug of USB devices.
-* A device can be opened only by one application at any time (on Windows; other OS - tbd.)
-  Devices opened by application(s) are not detectable by `usb_io_get_device_list` function.
-  To check that devices are connected, use the Device Manager.
-  (this is limitation of Windows; for other OS - tbd.).
 *  The library is not thread-safe. Applications must ensure that only one thread calls the library at any time. Several processes can use several boards, as long as each board is opened (with `usb_io_open_device`) by a single process at any time. 
 
 TO DO
