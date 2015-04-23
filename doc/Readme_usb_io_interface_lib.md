@@ -57,7 +57,7 @@ Native C/C++ does not need to use these.
   This value can be passed to other functions that receive pointer to device struct.
 *  `usb_io_device_get_id_string` - retrieves pointer to the "serial number" string, as opaque value.
   The caller should retrieve the string as one-byte (ASCII, zero terminated) string.
-*  .... need more ...
+*  .... need more ... TODO
 
 Structures
 -----------
@@ -102,9 +102,5 @@ If error occurred, the API functions that return error code return non-0 value; 
 * The host must poll to detect change of inputs. The device does not generate any events or interrupts.
 * The library does not support detection of hot plug/unplug of USB devices.
 *  The library is not thread-safe. Applications must ensure that only one thread calls the library at any time. Several processes can use several boards, as long as each board is opened (with `usb_io_open_device`) by a single process at any time. 
+*  It seems that the **pullup** mode of input pins cannot be read back from the device.
 
-TO DO
-======
-* ?? How to get input pin **pullup** mode from `usb_io_get_all_pin_info`?
-* Do not keep devices opened by default (Windows; needs changes in hiddata layer )
-* Revise my additional functions
