@@ -155,9 +155,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\lib\targetver.h" />
     <ClInclude Include="..\..\lib\usb_io_device.h" />
     <ClInclude Include="..\..\lib\usb_io_hw.h" />
-    <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\hiddata_mswin.c" />
