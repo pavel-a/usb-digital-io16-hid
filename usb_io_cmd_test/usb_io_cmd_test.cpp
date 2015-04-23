@@ -102,7 +102,7 @@ int test_LED_on_off(devhnd_t dev, intptr_t param)
 }
 
 // I/O pin loopback test
-
+// Specified in and out pins should be connected.
 int test_IO_loopbk(devhnd_t dev, intptr_t param)
 {
     unsigned pin_IN = param & 0xF;         // ....000N
@@ -134,6 +134,47 @@ int test_IO_loopbk(devhnd_t dev, intptr_t param)
         printf("^ IN[%d]=%X\n", pin_IN, inp);
 
     } //loop
+
+    return 0;
+}
+
+// Read status test
+int test_read_status(devhnd_t dev, intptr_t param)
+{
+    pin_info pi[16+2];
+    //1. read 1st time before any sets
+    int rc = -1;
+    memset(pi, 0xEE, sizeof(pi));
+    printf("-------- read 1 -----------\n");
+    rc = usb_io_get_all_pin_info(dev, &pi[0]);
+    for (int k=0; k < 16; k++) {
+        pin_info *p = &pi[k];
+        printf("[%u]: mode=%u val=%u\n", p->pinIndex, p->pinMode, p->pinValue);
+    }
+
+    //2. Make some settings and read again
+    rc = usb_io_set_pin_mode(dev, 0, INPUT_MODE, NO_INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 1, INPUT_MODE, INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 4, OUTPUT_MODE, NO_INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 5, INPUT_MODE, INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 8, INPUT_MODE, INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 9, INPUT_MODE, NO_INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 10, OUTPUT_MODE, NO_INNER_PULL_UP);
+    rc = usb_io_set_pin_mode(dev, 12, OUTPUT_MODE, NO_INNER_PULL_UP);
+
+    rc = usb_io_write_output_pin_value(dev, 4, HIGH_LVL);
+    rc = usb_io_write_output_pin_value(dev, 12, HIGH_LVL);
+    rc = usb_io_write_output_pin_value(dev, 10, LOW_LVL);
+
+    rc = -1;
+    memset(pi, 0xEE, sizeof(pi));
+    delayMs(50);
+    printf("-------- read 2 -----------\n");
+    rc = usb_io_get_all_pin_info(dev, &pi[0]);
+    for (int k=0; k < 16; k++) {
+        pin_info *p = &pi[k];
+        printf("[%u]: mode=%u val=%u\n", p->pinIndex, p->pinMode, p->pinValue);
+    }
 
     return 0;
 }
@@ -217,14 +258,13 @@ int main(int argc, char* argv[])
 
     try {
 
+//      rc = one_dev_test( test_read_status, -1);
 //    rc = orig_loop_test();
 //    rc = enum_test();
 //      rc = one_dev_test( test_LED_on_off, 2500 );
 
       //Loopback pins ## 0 <-> 10:
       rc = one_dev_test( test_IO_loopbk, (0U) | (10U << 4));
-
-
     } catch(...) {
         printf("\nException!\n");
     }
