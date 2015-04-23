@@ -8,6 +8,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usb_io_cmd_test", "usb_io_c
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usbio16_dll", "usbio16_dll\usbio16_dll(vs2008).vcproj", "{C6F03CBB-E5C3-4596-AE67-A8732A860858}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_gui_app", "test_gui_app\test_gui_app(vc2008).vcproj", "{2D5D9829-A2B2-4FFC-B818-528849DC9B0B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C6F03CBB-E5C3-4596-AE67-A8732A860858} = {C6F03CBB-E5C3-4596-AE67-A8732A860858}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -22,6 +27,10 @@ Global
 		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Debug|Win32.Build.0 = Debug|Win32
 		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Release|Win32.ActiveCfg = Release|Win32
 		{C6F03CBB-E5C3-4596-AE67-A8732A860858}.Release|Win32.Build.0 = Release|Win32
+		{2D5D9829-A2B2-4FFC-B818-528849DC9B0B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2D5D9829-A2B2-4FFC-B818-528849DC9B0B}.Debug|Win32.Build.0 = Debug|Win32
+		{2D5D9829-A2B2-4FFC-B818-528849DC9B0B}.Release|Win32.ActiveCfg = Release|Win32
+		{2D5D9829-A2B2-4FFC-B818-528849DC9B0B}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
