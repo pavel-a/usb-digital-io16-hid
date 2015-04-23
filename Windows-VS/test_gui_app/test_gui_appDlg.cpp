@@ -151,8 +151,9 @@ void Ctest_gui_appDlg::OnBnClickedButton2()
     //open usb io device
     int nIndex = m_devListBox.GetCurSel();
     CString strSerialNumber;
-    m_devListBox.GetLBText( nIndex, strSerialNumber);
-    //MessageBox(strCBText.GetString(), 0, MB_OK);
+    if ( nIndex >= 0) {
+        m_devListBox.GetLBText( nIndex, strSerialNumber);
+    }
 
     if (strSerialNumber.GetLength() == 0)
     {
