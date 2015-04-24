@@ -1,12 +1,12 @@
-/** $$$$$$$$$ WIP $$$$$$
+/**
 * USB HID I/O DEVICE API library
 * http://git.io/hx9J
 *
-* This is reconstruction of the original Windows DLL, as provided by the vendor.
-* It is binary compatible and works with their example programs.
-* The original .h file has been slightly hacked up.
+* This is reconstruction of the vendor's usb_io_interface.dll, with some additions.
+* It is binary compatible and works with the vendor's example programs.
+* The original usb_io_device.h has been updated to match.
 *
-* 14-apr-2015 pa01 Windows version
+* 24-apr-2015 pa02 Windows version
 */
 
 #define MY_VERSION 0x02
