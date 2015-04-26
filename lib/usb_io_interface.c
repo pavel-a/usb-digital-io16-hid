@@ -447,15 +447,15 @@ int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[US
         val = (buf[8] >> k) & 1;
         info[k].pinValue = val;
         val = (buf[6] >> k) & 1;
-        info[k].pinMode = val ? INPUT_MODE : OUTPUT_MODE;
+        info[k].pinMode = val ? OUTPUT_MODE : INPUT_MODE;
     }
 
     for (k = 8; k < USB_IO16_MAX_PIN_NUM; k++) {
         info[k].pinIndex = k;
         val = (buf[7] >> (k-8)) & 1;
         info[k].pinValue = val;
-        val = (buf[6] >> (k-8)) & 1;
-        info[k].pinMode = val ? INPUT_MODE : OUTPUT_MODE;
+        val = (buf[5] >> (k-8)) & 1;
+        info[k].pinMode = val ? OUTPUT_MODE : INPUT_MODE;
     }
 
     return 0;
