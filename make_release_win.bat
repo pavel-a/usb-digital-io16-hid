@@ -55,5 +55,6 @@ if not exist %REL%\test mkdir %REL%\test
 copy python\test_dio1.py  %REL%\test
 if errorlevel 1 goto :ERR
 copy Windows-VS\Powershell\test_usb_hid_io16_led_blink.ps1 %REL%\test
+echo Copy usb_io_interface.dll (32 or 64 bit) here before running test scripts! > %REL%\test\COPY_usb_io_interface.dll_HERE
 
 @echo Done.
