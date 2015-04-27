@@ -14,9 +14,9 @@
 #include <usb.h>
 
 #if 0 //ifdef DEBUG
-#define DEBUG_PRINT(arg)    printf arg
+#define DEBUG_PRINT(fmt, ...)    do {} while(0)
 #else
-#define DEBUG_PRINT(arg)
+#define DEBUG_PRINT(fmt, ...) fprintf(stderr, fmt, ## __VA_ARGS__)
 #endif
 
 
@@ -55,7 +55,7 @@ int usbhidEnumDevices(int vendor, int product,
     struct usb_bus      *bus;
     struct usb_device   *dev;
     usb_dev_handle      *handle = NULL;
-    int                 errorCode = USBOPEN_ERR_NOTFOUND;
+    int                 errorCode = USBHID_ERR_NOTFOUND;
     static int          didUsbInit = 0;
 
     if(!didUsbInit){
@@ -69,8 +69,8 @@ int usbhidEnumDevices(int vendor, int product,
             if (dev->descriptor.idVendor == vendor && dev->descriptor.idProduct == product) {
                 handle = usb_open(dev); /* we need to open the device in order to query strings */
                 if ( !handle ) {
-                    errorCode = USBOPEN_ERR_ACCESS;
-                    fprintf(stderr, "Warning: cannot open USB device: %s\n", usb_strerror());
+                    errorCode = USBHID_ERR_ACCESS;
+                    DEBUG_PRINT("Warning: cannot open USB device: %s\n", usb_strerror());
                     continue;
                 }
 
@@ -78,8 +78,8 @@ int usbhidEnumDevices(int vendor, int product,
 
 //  printf("Probing: [%s] nc=%u %p\n", dev->filename, dev->num_children, dev->children);
                 // Assume our devices are leaf, so we can use dev->children to store the handle
-                if ( dev->children ) {
-                    fprintf(stderr, "ERROR: assertion failed for usb dev %p\n", dev);
+                if ( dev->num_children != 0 ) {
+                    DEBUG_PRINT("ERROR: assertion failed for usb dev %p\n", dev);
                     usb_close(handle);
                     handle = NULL;
                     continue;
@@ -118,9 +118,9 @@ static int usbhidGetStringAscii(struct usb_dev_handle *dev, int index, char *buf
     if((rval = usb_get_string_simple(dev, index, buf, buflen)) >= 0) /* use libusb version if it works */
         return rval;
     if (errno == EPERM)
-      fprintf(stderr, "usbhid: Access denied to USB device. Run as root or adjust device permissions.\n");
+      DEBUG_PRINT("usbhid: Access denied to USB device. Run as root or adjust device permissions.\n");
     else
-      fprintf(stderr, "usbhid: %s error %s\n", __FUNCTION__, usb_strerror());
+      DEBUG_PRINT("usbhid: %s error %s\n", __FUNCTION__, usb_strerror());
     return -1;
 }
 
@@ -128,8 +128,8 @@ int usbhidGetVendorString(USBDEVHANDLE usbh, char *buffer, int len)
 {
     int len2 = usbhidGetStringAscii(usbDevHandle(usbh), usbDevStruct(usbh)->descriptor.iManufacturer, buffer, len);
     if (len2 < 0) {
-        fprintf(stderr, "Warning: cannot query vendor for device\n");
-        return USBOPEN_ERR_IO;
+        DEBUG_PRINT("Warning: cannot query vendor for device\n");
+        return USBHID_ERR_IO;
     }
     return 0;
 }
@@ -138,8 +138,8 @@ int usbhidGetProductString(USBDEVHANDLE usbh, char *buffer, int len)
 {
     int len2 = usbhidGetStringAscii(usbDevHandle(usbh), usbDevStruct(usbh)->descriptor.iProduct, buffer, len);
     if (len2 < 0) {
-        fprintf(stderr, "Warning: cannot query product for device\n");
-        return USBOPEN_ERR_IO;
+        DEBUG_PRINT("Warning: cannot query product for device\n");
+        return USBHID_ERR_IO;
     }
     return 0;
 }
@@ -160,8 +160,8 @@ int usbhidSetReport(USBDEVHANDLE usbh, char *buffer, int len)
             0, buffer, len, A_REPORT_REQUEST_TIMEOUT);
     if (bytesSent != len) {
         if (bytesSent < 0)
-            fprintf(stderr, "Error sending message: %s\n", usb_strerror());
-        return USBOPEN_ERR_IO;
+            DEBUG_PRINT("Error sending message: %s\n", usb_strerror());
+        return USBHID_ERR_IO;
     }
     return 0;
 }
@@ -180,8 +180,8 @@ int bytesReceived, maxLen = *len;
             USB_TYPE_CLASS | USB_RECIP_DEVICE | USB_ENDPOINT_IN, USBRQ_HID_GET_REPORT, USB_HID_REPORT_TYPE_FEATURE << 8 | reportNumber,
             0, buffer, maxLen, A_REPORT_REQUEST_TIMEOUT);
     if(bytesReceived < 0){
-        fprintf(stderr, "Error sending message: %s\n", usb_strerror());
-        return USBOPEN_ERR_IO;
+        DEBUG_PRINT("Error sending message: %s\n", usb_strerror());
+        return USBHID_ERR_IO;
     }
     *len = bytesReceived;
     if (!usesReportIDs(usbh)) {
@@ -203,12 +203,16 @@ int usbhidStrerror_r( int err, char *buf, int len)
     const char *s;
     switch (err) {
         case USBHID_ERR_ACCESS:      s = "Access to device denied";
+            break;
         case USBHID_ERR_NOTFOUND:    s = "The specified device was not found";
+            break;
         case USBHID_ERR_IO:          s = "Communication error with device";
+            break;
         case USBHID_ERR_IO_HID:      s = "HID I/O error with device";
+            break;
         default:
             s = "";
     }
-  
+
     return snprintf(buf, len, "%s", s);
 }

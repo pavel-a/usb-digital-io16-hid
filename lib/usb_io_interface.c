@@ -25,6 +25,7 @@
 
 #else  //WIN32
 #define USBRL_API /**/
+#include <stdint.h>
 #endif //WIN32
 
 #include "usb_io_device.h"
@@ -51,10 +52,10 @@
 
 #if 1
 //#define dbgprintf(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
-#define dbgprintf(fmt, ...) printf(fmt, __VA_ARGS__)
+#define dbgprintf(fmt, ...) printf(fmt, ## __VA_ARGS__)
 //#define dbgprintf(fmt, ...) __noop(fmt, __VA_ARGS__)
 //#define printerr(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
-#define printerr(fmt, ...) printf(fmt, __VA_ARGS__)
+#define printerr(fmt, ...) printf(fmt, ## __VA_ARGS__)
 //#define printerr(fmt, ...) __noop(fmt, __VA_ARGS__)
 #else
 #define dbgprintf(fmt, ...) do;while(0)
@@ -102,7 +103,7 @@ static const char *usbErrorMessage(int errCode)
 
 
 // Read HID report
-static int d16_read_rep(USBDEVHANDLE dev, int reportnum, unsigned char raw_data[8+1])
+static int d16_read_rep(USBDEVHANDLE dev, int reportnum, char raw_data[8+1])
 {
     char buffer[10];
     int err;
@@ -130,12 +131,12 @@ static int d16_read_rep(USBDEVHANDLE dev, int reportnum, unsigned char raw_data[
 
 
 // Write HID report
-static int d16_write_rep(USBDEVHANDLE dev, int reportnum, unsigned char buffer[8+1])
+static int d16_write_rep(USBDEVHANDLE dev, int reportnum, char buffer[8+1])
 {
     int err;
     int len = 8 + 1; /* report id 1 byte + 8 bytes data */
 
-    buffer[0] = (unsigned char)reportnum;
+    buffer[0] = (char)reportnum;
     err = usbhidSetReport(dev, buffer, len);
     if ( err ) {
         printerr("error writing hid report: %s\n", usbErrorMessage(err));
@@ -208,8 +209,8 @@ int enumfunc(USBDEVHANDLE usbh, void *context)
     /* keep this device, continue */
     q->usbh = usbh;
     memcpy(q->idstr, &buffer[1], USB_IO16_ID_STR_LEN);
-    q->type = 16; //  $$$ # pins
-    q->urdi.serial_number = &q->idstr[0];
+    q->type = 16; // put # of pins for now...
+    q->urdi.serial_number = (void*)&q->idstr[0];
     q->urdi.device_path = (char*)g_dummyPath;
 
     if ( !ectx->head ) {
@@ -304,7 +305,7 @@ intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_in
     if ( !dev_list || !serial_number )
         return 0;
     for (tmp = dev_list; tmp; tmp = tmp->next ) {
-        if ( 0 != strcmp(tmp->serial_number, serial_number) )
+        if ( 0 != strcmp((void*)tmp->serial_number, serial_number) )
             continue;
         return usb_io_open_device(tmp);
     }
@@ -330,7 +331,7 @@ intptr_t EXPORT_API usb_io_open_device(struct usb_io_device_info *device_info)
  */
 void EXPORT_API usb_io_close_device(intptr_t hHandle)
 {
-    struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
+    //struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     if ( 0 == hHandle || ((intptr_t)-1) == hHandle )
         return; // bogus ptr, don't touch
 
@@ -340,7 +341,7 @@ void EXPORT_API usb_io_close_device(intptr_t hHandle)
 
 int EXPORT_API usb_io_set_work_led_mode(intptr_t hHandle, enum work_led_mode led_mode)
 {
-    unsigned char buf[9];
+    char buf[9];
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
 
     memset(buf, 0, sizeof(buf));
@@ -357,7 +358,7 @@ int EXPORT_API usb_io_set_pin_mode(intptr_t hHandle,
     enum pin_mode mode,
     enum input_pin_mode innerPullUp)
 {
-    unsigned char buf[9];
+    char buf[9];
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     if (!p)
         return 1;
@@ -366,16 +367,16 @@ int EXPORT_API usb_io_set_pin_mode(intptr_t hHandle,
 
     memset(buf, 0, sizeof(buf));
     buf[1] = 0xFF;
-    buf[2] = (unsigned char)pinIndex;
-    buf[3] = (unsigned char)!!mode;
-    buf[4] = (unsigned char)!!innerPullUp;
+    buf[2] = (char)pinIndex;
+    buf[3] = (char)!!mode;
+    buf[4] = (char)!!innerPullUp;
 
     return d16_write_rep(p->usbh, 0, buf);
 }
 
 int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned pinIndex, enum pin_level level)
 {
-    unsigned char buf[9];
+    char buf[9];
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     if (!p)
         return 1;
@@ -384,8 +385,8 @@ int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned pinIndex
 
     memset(buf, 0, sizeof(buf));
     buf[1] = 0xFD;
-    buf[2] = (unsigned char)pinIndex;
-    buf[3] = (unsigned char)!!level;
+    buf[2] = (char)pinIndex;
+    buf[3] = (char)!!level;
 
     return d16_write_rep(p->usbh, 0, buf);
 }
@@ -393,7 +394,7 @@ int EXPORT_API usb_io_write_output_pin_value(intptr_t hHandle, unsigned pinIndex
 
 int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, unsigned *level)
 {
-    unsigned char buf[9];
+    char buf[9];
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     unsigned val;
     if (!p)
@@ -423,7 +424,7 @@ int EXPORT_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, 
 
 int EXPORT_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[USB_IO16_MAX_PIN_NUM])
 {
-    unsigned char buf[9];
+    char buf[9];
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)hHandle;
     unsigned val;
     int k;

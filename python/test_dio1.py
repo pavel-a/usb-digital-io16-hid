@@ -23,7 +23,7 @@ else:
     return bytes(s)  #bytes(s, "ascii")
  
 
-libpath=r'.' + "\\"
+libpath=r'.' + "/"
 libfile = {'nt':   "usb_io_interface.dll", 
            'posix': "usb_hid_io16.so",
            'darwin':"usb_hid_io16.dylib",
