@@ -9,63 +9,91 @@
 # Returned status as Int32 (signed, always 32 bit)
 
 # Detect script host bitness to use the matching DLL variant:
-$host_arch = 0x86
-if ( 8 -eq [IntPtr]::Size ) { $host_arch = 0x64 }
-"Host arch: x{0:X}" -f $host_arch
+$host_arch = "x86"
+if ( 8 -eq [IntPtr]::Size ) { $host_arch = "AMD64" }
+"Host arch: {0}" -f $host_arch
 
-$Methods_IOLIB = @'
+$PathHere =  (Get-Location).Path
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io_init();
+#########################################################################
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io_uninit();
+function loadDll {
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.IntPtr usb_io_get_device_list();
+$PathUp = $PathHere.Substring(0, $PathHere.LastIndexOf("\"))
 
-[DllImport("usb_io_interface.dll")]
-public static extern void usb_io_free_device_list(System.IntPtr devlist);
+if (1) {
+  # To use the DLL in the build tree
+  # Add to PATH: for x86: ../Release ; for x64: ../x64/Release (or Debug, if you like)
+  if ( $host_arch -eq "AMD64" ) { $DLL_path = "${PathUp}\x64\Release" } else { $DLL_path = "${PathUp}\Release" }
+  $env:Path += ";" + $DLL_path
+}
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.IntPtr usb_io_open_device(System.IntPtr develem);
+if (1) {
+  # To use the DLL in the release tree
+  # Add to PATH: for x86: ../bin-Win32 ; for x64: ../Win-x64
+  if ( $host_arch -eq "AMD64" ) { $DLL_path = "${PathUp}\bin-Win64" } else { $DLL_path = "${PathUp}\bin-win32" }
+  $env:Path += ";" + $DLL_path
+} 
 
-[DllImport("usb_io_interface.dll")]
-public static extern void usb_io_close_device(System.IntPtr hdev);
+if (0) {
+  # Copy usb_io_interface.dll here, or put it in PATH before running this script
+  $env:Path += ";" + $PathHere
+}
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io_set_work_led_mode(System.IntPtr hdev, System.UInt32 onoff);
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io_set_pin_mode(System.IntPtr hdev, 
-                System.UInt32 pinIndex, System.UInt32 pinMode,
+$DllName = "usb_io_interface.dll"
+$Prefx = "[DllImport(`"${DllName}`")] public static extern "
+
+$Methods_IOLIB = @"
+$Prefx
+System.Int32 usb_io_init();
+
+$Prefx
+System.Int32 usb_io_uninit();
+
+$Prefx
+System.IntPtr usb_io_get_device_list();
+
+$Prefx
+void usb_io_free_device_list(System.IntPtr devlist);
+
+$Prefx
+System.IntPtr usb_io_open_device(System.IntPtr develem);
+
+$Prefx 
+void usb_io_close_device(System.IntPtr hdev);
+
+$Prefx 
+System.Int32 usb_io_set_work_led_mode(System.IntPtr hdev, System.UInt32 onoff);
+
+$Prefx 
+System.Int32 usb_io_set_pin_mode(System.IntPtr hdev, 
+        System.UInt32 pinIndex, System.UInt32 pinMode,
 				System.UInt32 pullupMode);
 				
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io_write_output_pin_value(System.IntPtr hdev,
+$Prefx 
+System.Int32 usb_io_write_output_pin_value(System.IntPtr hdev,
                  System.UInt32 pinIndex, System.Int32 pinLevel);
 
-[DllImport("usb_io_interface.dll")]
-public static extern System.Int32 usb_io16_lib_version();
+$Prefx 
+System.Int32 usb_io16_lib_version();
+
+"@
+
+#.... TO DO define missing functions ....
+# usb_io_read_input_pin_value - returns byref
+# usb_io_get_all_pin_info - returns array of struct
+
+#+ My additions:
+# V usb_io16_lib_version
+# usb_io_device_next_dev
+# usb_io_device_get_id_string
+# usb_io_device_open_with_serial_number
 
 
-//.... TO DO define missing functions ....
-// usb_io_read_input_pin_value - returns byref?
-// usb_io_get_all_pin_info - returns array of struct
+$Global:IOLIB = Add-Type -MemberDefinition $Methods_IOLIB -Name 'IOLIB' -Namespace 'MYAPP' -PassThru
 
-//+ My additions:
-// V usb_io16_lib_version
-// usb_io_device_next_dev
-// usb_io_device_get_id_string
-// usb_io_device_open_with_serial_number
-
-'@
-
-function test {
-
-$IOLIB = Add-Type -MemberDefinition $Methods_IOLIB -Name 'IOLIB' -Namespace 'MYAPP' -PassThru
-
-# functions can be also called as [MYAPP.IOLIB]::funcname
+# DLL functions can be called as [IOLIB]::funcname or [MYAPP.IOLIB]::funcname
 # --------------
 
 try {
@@ -84,6 +112,12 @@ try {
      Write-Warning "Error calling usb_io lib"
      return 1
 }
+
+} # init
+
+##################################################################################
+
+function test {
 
 $devlist = $IOLIB::usb_io_get_device_list();
 #echo $devlist
@@ -116,8 +150,11 @@ $devlist = 0
 Write-Host "END test"
 
 return 0
-}
+} #test_blink
 
-"Now type: TEST" # Run: uncomment next line
+# MAIN
 
-#test
+loadDll
+
+# "Now type: TEST" # Run: uncomment next line
+test
