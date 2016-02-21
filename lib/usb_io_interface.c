@@ -218,6 +218,7 @@ int enumfunc(USBDEVHANDLE usbh, void *context)
         ectx->tail = q;
     } else {
         ectx->tail->urdi.next = (pusb_io_device_info_t)q;
+        ectx->tail = q;
     }
 
     ++ectx->numdevs;
