@@ -138,7 +138,7 @@ int USBRL_API usb_io_read_input_pin_value(intptr_t hHandle, unsigned pinIndex, u
 
 /* Get the value of all pins
     @param  hHandle:  the device handle returned by usb_io_open_device
-	@param info [out]  array of pin_info
+    @param info [out]  array of pin_info
     @returns:  0 on success, other on failure
     */
 int USBRL_API usb_io_get_all_pin_info(intptr_t hHandle, struct pin_info info[16]);

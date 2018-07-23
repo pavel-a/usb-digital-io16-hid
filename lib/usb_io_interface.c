@@ -276,7 +276,7 @@ pusb_io_device_info_t EXPORT_API usb_io_get_device_list(void)
 
 
 /** Free an enumeration Linked List*/
-void USBRL_API usb_io_free_device_list(struct usb_io_device_info *dilist)
+void EXPORT_API usb_io_free_device_list(struct usb_io_device_info *dilist)
 {
     struct usb_io_internal_s *p = (struct usb_io_internal_s *)dilist;
 
@@ -299,7 +299,7 @@ void USBRL_API usb_io_free_device_list(struct usb_io_device_info *dilist)
 @return This function returns a valid handle to the device on success or NULL on failure.
 Example: usb_io_device_open_with_serial_number(devlist, "abcd")
 */
-intptr_t USBRL_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
+intptr_t EXPORT_API usb_io_device_open_with_serial_number(struct usb_io_device_info *dev_list,
                                                          const char *serial_number)
 {
     struct usb_io_device_info *tmp;

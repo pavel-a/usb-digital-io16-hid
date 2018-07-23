@@ -10,22 +10,22 @@ class Ctest_gui_appDlg : public CDialog
 {
 //
 public:
-	Ctest_gui_appDlg(CWnd* pParent = NULL);	//
+    Ctest_gui_appDlg(CWnd* pParent = NULL);	//
 
-	enum { IDD = IDD_TEST_GUI_APP_DIALOG };
+    enum { IDD = IDD_TEST_GUI_APP_DIALOG };
 
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV
+    protected:
+    virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV
 
 protected:
-	HICON m_hIcon;
+    HICON m_hIcon;
 
-	virtual BOOL OnInitDialog();
-	afx_msg void OnPaint();
-	afx_msg HCURSOR OnQueryDragIcon();
+    virtual BOOL OnInitDialog();
+    afx_msg void OnPaint();
+    afx_msg HCURSOR OnQueryDragIcon();
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 
-	DECLARE_MESSAGE_MAP()
+    DECLARE_MESSAGE_MAP()
 
 public:
     CButton m_findDevBtn;

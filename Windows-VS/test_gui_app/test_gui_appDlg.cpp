@@ -1,12 +1,17 @@
-// test_gui_appDlg.cpp
+//
+// Test app for 'usb_io_interface' device
 //
 
 #include "stdafx.h"
 #include "test_gui_app.h"
 #include "test_gui_appDlg.h"
-#include "usb_io_device.h"
 
+#include "usb_io_device.h"
 #pragma comment(lib, "usb_io_interface.lib")
+
+#ifndef USB_IO16_MAX_PIN_NUM
+#define USB_IO16_MAX_PIN_NUM 16
+#endif
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -14,13 +19,14 @@
 
 //#define  CHINESE_LANG 1 //Chinese Or English
 //TODO normal localization (MUI resources or string table...)
-
+//TODO all messages are RED color, this is confusing. Use different colors for success vs errors.
+//  below in Ctest_gui_appDlg::OnCtlColor()
 
 Ctest_gui_appDlg::Ctest_gui_appDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(Ctest_gui_appDlg::IDD, pParent),
+    : CDialog(Ctest_gui_appDlg::IDD, pParent),
     m_devList(NULL)
 {
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+    m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void Ctest_gui_appDlg::DoDataExchange(CDataExchange* pDX)
@@ -41,10 +47,10 @@ void Ctest_gui_appDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(Ctest_gui_appDlg, CDialog)
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
+    ON_WM_PAINT()
+    ON_WM_QUERYDRAGICON()
     ON_WM_CTLCOLOR()
-	//}}AFX_MSG_MAP
+    //}}AFX_MSG_MAP
     ON_BN_CLICKED(IDC_RADIO1, &Ctest_gui_appDlg::OnBnClickedRadio1)
     ON_BN_CLICKED(IDC_RADIO2, &Ctest_gui_appDlg::OnBnClickedRadio2)
     ON_BN_CLICKED(IDC_BUTTON3, &Ctest_gui_appDlg::OnBnClickedButton3)
@@ -62,16 +68,11 @@ END_MESSAGE_MAP()
 
 BOOL Ctest_gui_appDlg::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+    CDialog::OnInitDialog();
 
-	SetIcon(m_hIcon, TRUE);			// big icon
-	SetIcon(m_hIcon, FALSE);		// small icon
-
-    if (usb_io_init() != 0)
-    {
-        ::MessageBox(NULL, _T("Init usb io failure"), 0, MB_OK);
-        exit(1);
-    }
+    this->SetWindowText(_T("Test for usb_io_interface device"));
+    SetIcon(m_hIcon, TRUE);			// big icon
+    SetIcon(m_hIcon, FALSE);		// small icon
 
     m_inputSelBtn.SetCheck(TRUE);
     m_pullupFlag.SetCheck(TRUE);
@@ -81,7 +82,8 @@ BOOL Ctest_gui_appDlg::OnInitDialog()
     m_openWorkLed.EnableWindow(FALSE);
     m_closeWorkLed.EnableWindow(FALSE);
 
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < (USB_IO16_MAX_PIN_NUM+2); i++)
+        // Two more added to test error detection, they should return errors! -- pa
     {
         CString str;
         str.AppendFormat(_T("%i"), i);
@@ -89,40 +91,46 @@ BOOL Ctest_gui_appDlg::OnInitDialog()
     }
     m_pinIndexList.SetCurSel(0);
 
+    if (usb_io_init() != 0)
+    {
+        ::MessageBox(NULL, _T("usb_io library init failure"), 0, MB_OK);
+        exit(1);
+    }
+
     OnBnClickedfinddevicebtn();
 
-	return TRUE;  //
+    return TRUE;
 }
 
 
 void Ctest_gui_appDlg::OnPaint()
 {
-	if (IsIconic())
-	{
-		CPaintDC dc(this); //
+    if (IsIconic())
+    {
+        CPaintDC dc(this);
 
-		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		//
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
-		CRect rect;
-		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
+        //
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
 
-		//
-		dc.DrawIcon(x, y, m_hIcon);
-	}
-	else
-	{
-		CDialog::OnPaint();
-	}
+        //
+        dc.DrawIcon(x, y, m_hIcon);
+    }
+    else
+    {
+        CDialog::OnPaint();
+    }
 }
 
 HCURSOR Ctest_gui_appDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+    return static_cast<HCURSOR>(m_hIcon);
 }
 
 
@@ -314,12 +322,12 @@ void Ctest_gui_appDlg::OnBnClickedfinddevicebtn()
     {
         m_devListBox.SetCurSel(0);
         CString str;
-        str.AppendFormat(_T("find %d USB IO devices"), cnt);
+        str.AppendFormat(_T("Found %d USB IO device(s)"), cnt);
         GetDlgItem(IDC_Log)->SetWindowText(str.GetString());
     }
     else
     {
-
+        GetDlgItem(IDC_Log)->SetWindowText(_T("No compatible devices found"));
     }
 }
 
