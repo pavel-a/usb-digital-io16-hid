@@ -5,7 +5,7 @@ root = true  ; top-most EditorConfig file
 
 [*]
 end_of_line = lf
-insert_final_newline = false
+; insert_final_newline = false
 
 ; Markdown: KEEP trailing whitespace!
 [*.{md,markdown}]
@@ -30,6 +30,7 @@ end_of_line = crlf
 end_of_line = crlf
 indent_style = space
 indent_size = 2
+insert_final_newline = true
 
 [*.py]
 indent_style = space
